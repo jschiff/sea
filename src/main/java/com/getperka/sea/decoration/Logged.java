@@ -1,4 +1,5 @@
-package com.getperka.sea.log;
+package com.getperka.sea.decoration;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -33,17 +34,17 @@ import com.getperka.sea.ext.EventDecoratorBinding;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Logged {
   /**
-   * If set, an error message to be logged whenever the dispatch target is invoked.
+   * If set, an error message to be logged whenever the event receiver is invoked.
    */
   String error() default "";
 
   /**
-   * If set, an info message to be logged whenever the dispatch target is invoked.
+   * If set, an info message to be logged whenever the event receiver is invoked.
    */
   String info() default "";
 
   /**
-   * If set, a warning message to be logged whenever the dispatch target is invoked.
+   * If set, a warning message to be logged whenever the event receiver is invoked.
    */
   String warn() default "";
 }

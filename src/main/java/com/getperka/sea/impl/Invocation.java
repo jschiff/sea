@@ -86,11 +86,13 @@ public class Invocation implements Callable<Object> {
             return target.getMethod().invoke(target.getInstance(), event);
           } catch (InvocationTargetException e) {
             // Clean up stack trace
-            if (e.getCause() instanceof Exception) {
-              throw (Exception) e.getCause();
-            }
-            throw e;
+            return this.<RuntimeException> sneakyThrow(e.getCause());
           }
+        }
+
+        @SuppressWarnings("unchecked")
+        private <T extends Throwable> Object sneakyThrow(Throwable t) throws T {
+          throw (T) t;
         }
       };
 
@@ -119,7 +121,7 @@ public class Invocation implements Callable<Object> {
    */
   @Override
   public String toString() {
-    return event.getClass().getName() + " -> " + target;
+    return target.toString();
   }
 
   private void instantiateDecorators(AnnotatedElement elt) {

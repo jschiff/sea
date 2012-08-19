@@ -25,9 +25,11 @@ import java.lang.reflect.Method;
 import java.util.concurrent.Callable;
 
 import com.getperka.sea.Event;
+import com.getperka.sea.EventDispatch;
 
 /**
- * An EventDecorator can be used for contextual set-up when dispatching certain kinds of events.
+ * An EventDecorator can be used for contextual set-up when dispatching events to particular
+ * receivers.
  * <p>
  * An implementation of {@link EventDecorator} might look like:
  * 
@@ -41,12 +43,12 @@ import com.getperka.sea.Event;
  *     return MyEvent.class;
  *   }
  * 
- *   public Callable&lt;Object&gt; wrap(MyBinding annotation, MyEvent event, Callable&lt;Object&gt; work) {
+ *   public Callable&lt;Object&gt; wrap(final Context ctx) {
  *     return new Callable&lt;Object&gt;() {
  *       public Object call() throws Exception {
  *         // Do some setup
  *         try {
- *           return work.call();
+ *           return ctx.getWork().call();
  *         } finally {
  *           // Do some tear-down
  *         }
@@ -89,6 +91,7 @@ import com.getperka.sea.Event;
  * 
  * @param <A> the annotation type used to bind instances of the EventDecorator
  * @param <E> the expected event type
+ * @see EventDispatch#addGlobalDecorator
  */
 public interface EventDecorator<A extends Annotation, E extends Event> {
   public interface Context<A extends Annotation, E extends Event> {

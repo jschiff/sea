@@ -1,4 +1,4 @@
-package com.getperka.sea.log;
+package com.getperka.sea.decoration;
 /*
  * #%L
  * Simple Event Architecture

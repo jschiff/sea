@@ -41,9 +41,9 @@ import javax.inject.Inject;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.getperka.sea.decoration.Logged;
 import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.EventDecoratorBinding;
-import com.getperka.sea.log.Logged;
 
 @Logged
 public class EventSmokeTest {

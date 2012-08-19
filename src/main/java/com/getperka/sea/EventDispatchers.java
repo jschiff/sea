@@ -1,4 +1,5 @@
 package com.getperka.sea;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -22,6 +23,9 @@ package com.getperka.sea;
 import com.getperka.sea.inject.EventModule;
 import com.google.inject.Guice;
 
+/**
+ * A factory for {@link EventDispatch} instances.
+ */
 public class EventDispatchers {
   /**
    * Instantiates a new {@link EventDispatch} instance.
