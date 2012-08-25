@@ -28,7 +28,7 @@ import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 
 /**
- * An EventDecorator can be used for contextual set-up when dispatching events to particular
+ * An EventDecorator can be used for contextual setup when dispatching events to particular
  * receivers.
  * <p>
  * An implementation of {@link EventDecorator} might look like:
@@ -116,16 +116,6 @@ public interface EventDecorator<A extends Annotation, E extends Event> {
      */
     Callable<Object> getWork();
   }
-
-  /**
-   * The expected binding annotation type.
-   */
-  Class<? extends A> getAnnotationType();
-
-  /**
-   * The expected event type.
-   */
-  Class<? extends E> getEventType();
 
   /**
    * Allows custom logic to be applied during an event receiver invocation.

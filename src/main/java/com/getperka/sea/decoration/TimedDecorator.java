@@ -1,4 +1,5 @@
 package com.getperka.sea.decoration;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -82,16 +83,6 @@ class TimedDecorator implements EventDecorator<Timed, Event> {
    */
   @SuppressWarnings("serial")
   static class TimeoutError extends Throwable {}
-
-  @Override
-  public Class<? extends Timed> getAnnotationType() {
-    return Timed.class;
-  }
-
-  @Override
-  public Class<? extends Event> getEventType() {
-    return Event.class;
-  }
 
   @Override
   public Callable<Object> wrap(final Context<Timed, Event> ctx) {

@@ -57,15 +57,6 @@ public class EventSmokeTest {
   }
 
   static class Decorator implements EventDecorator<NeedsDecoration, MyEvent> {
-    @Override
-    public Class<? extends NeedsDecoration> getAnnotationType() {
-      return NeedsDecoration.class;
-    }
-
-    @Override
-    public Class<? extends MyEvent> getEventType() {
-      return MyEvent.class;
-    }
 
     @Override
     public Callable<Object> wrap(final Context<NeedsDecoration, MyEvent> ctx) {
@@ -137,16 +128,6 @@ public class EventSmokeTest {
   }
 
   static class NullifyingDecorator implements EventDecorator<Nullify, Event> {
-    @Override
-    public Class<? extends Nullify> getAnnotationType() {
-      return Nullify.class;
-    }
-
-    @Override
-    public Class<? extends Event> getEventType() {
-      return Event.class;
-    }
-
     @Override
     public Callable<Object> wrap(Context<Nullify, Event> ctx) {
       decoratorCalled = true;

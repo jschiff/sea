@@ -24,6 +24,8 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.concurrent.Callable;
 
@@ -43,6 +45,7 @@ import com.getperka.sea.inject.EventScope;
 import com.getperka.sea.inject.EventScoped;
 import com.getperka.sea.inject.GlobalDecorators;
 import com.google.inject.Injector;
+import com.google.inject.TypeLiteral;
 
 @EventScoped
 public class Invocation implements Callable<Object> {
@@ -143,8 +146,12 @@ public class Invocation implements Callable<Object> {
          * specific to a certain event subtype to be applied to a receiver method that accepts a
          * wider event type.
          */
-        if (!decorator.getAnnotationType().isAssignableFrom(a.annotationType())
-          || !decorator.getEventType().isAssignableFrom(event.getClass())) {
+        ParameterizedType type = (ParameterizedType) TypeLiteral.get(clazz)
+            .getSupertype(EventDecorator.class)
+            .getType();
+        Type[] typeArgs = type.getActualTypeArguments();
+        if (!TypeLiteral.get(typeArgs[0]).getRawType().isAssignableFrom(a.annotationType())
+          || !TypeLiteral.get(typeArgs[1]).getRawType().isAssignableFrom(event.getClass())) {
           continue;
         }
         decoratorScope.withAnnotation(a).withWork(toInvoke);

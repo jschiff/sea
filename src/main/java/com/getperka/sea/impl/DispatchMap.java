@@ -55,6 +55,7 @@ public class DispatchMap {
    */
   private final Map<Class<? extends Event>, List<ReceiverTarget>> cache =
       new ConcurrentHashMap<Class<? extends Event>, List<ReceiverTarget>>();
+  private Provider<SettableReceiverTarget> dispatchTargets;
   private Injector injector;
   private Logger logger;
   /**
@@ -67,8 +68,6 @@ public class DispatchMap {
    * Prevents duplicate registrations of receiver types.
    */
   private final Set<Class<?>> registered = new HashSet<Class<?>>();
-
-  private Provider<SettableReceiverTarget> dispatchTargets;
 
   @Inject
   protected DispatchMap() {}

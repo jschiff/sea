@@ -35,16 +35,6 @@ class LoggingDecorator implements EventDecorator<Logged, Event> {
   LoggingDecorator() {}
 
   @Override
-  public Class<? extends Logged> getAnnotationType() {
-    return Logged.class;
-  }
-
-  @Override
-  public Class<? extends Event> getEventType() {
-    return Event.class;
-  }
-
-  @Override
   public Callable<Object> wrap(final Context<Logged, Event> ctx) {
     return new Callable<Object>() {
       @Override

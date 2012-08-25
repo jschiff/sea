@@ -52,13 +52,31 @@ public interface EventDispatch {
    */
   void addGlobalDecorator(AnnotatedElement element);
 
+  /**
+   * Asynchronously dispatch an {@link Event}. The actual event dispatch will typically occur on a
+   * separate thread.
+   */
   void fire(Event event);
 
+  /**
+   * Register a receiver class. Instances of the class will be created on demand for each event the
+   * class receives.
+   */
   void register(Class<?> receiver);
 
+  /**
+   * Register a receiver class, using the given Provider to instantiate the instances.
+   */
   <T> void register(Class<T> receiver, Provider<? extends T> provider);
 
+  /**
+   * Register a singleton receiver.
+   */
   void register(Object receiver);
 
+  /**
+   * Prevents any further events from being dispatched. Events that are queued will be dropped.
+   * Events currently being dispatched will be allowed to continue.
+   */
   void shutdown();
 }

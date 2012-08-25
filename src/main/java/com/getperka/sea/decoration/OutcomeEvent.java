@@ -117,15 +117,6 @@ public abstract class OutcomeEvent implements Event {
   public @interface Success {}
 
   static class FailureFilter implements EventDecorator<Failure, OutcomeEvent> {
-    @Override
-    public Class<? extends Failure> getAnnotationType() {
-      return Failure.class;
-    }
-
-    @Override
-    public Class<? extends OutcomeEvent> getEventType() {
-      return OutcomeEvent.class;
-    }
 
     @Override
     public Callable<Object> wrap(Context<Failure, OutcomeEvent> ctx) {
@@ -139,16 +130,6 @@ public abstract class OutcomeEvent implements Event {
     @Inject
     ImplementationFilter(EventDispatch dispatch) {
       this.dispatch = dispatch;
-    }
-
-    @Override
-    public Class<? extends Implementation> getAnnotationType() {
-      return Implementation.class;
-    }
-
-    @Override
-    public Class<? extends OutcomeEvent> getEventType() {
-      return OutcomeEvent.class;
     }
 
     @Override
@@ -176,16 +157,6 @@ public abstract class OutcomeEvent implements Event {
   }
 
   static class SuccessFilter implements EventDecorator<Success, OutcomeEvent> {
-    @Override
-    public Class<? extends Success> getAnnotationType() {
-      return Success.class;
-    }
-
-    @Override
-    public Class<? extends OutcomeEvent> getEventType() {
-      return OutcomeEvent.class;
-    }
-
     @Override
     public Callable<Object> wrap(Context<Success, OutcomeEvent> ctx) {
       return ctx.getEvent().isSuccess() ? ctx.getWork() : null;
