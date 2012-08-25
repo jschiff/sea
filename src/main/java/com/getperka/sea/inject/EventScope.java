@@ -45,7 +45,7 @@ public class EventScope extends BaseScope {
 
   @Override
   public <T> Provider<T> scope(Key<T> key, Provider<T> unscoped) {
-    if (Event.class.equals(key.getTypeLiteral().getRawType())) {
+    if (CurrentEvent.class.equals(key.getAnnotationType())) {
       return cast(new Provider<Event>() {
         @Override
         public Event get() {
