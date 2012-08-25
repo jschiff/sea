@@ -87,7 +87,9 @@ public class EventModule extends PrivateModule {
 
     bind(new TypeLiteral<List<Invocation>>() {}).toProvider(InvocationProvider.class);
 
-    bind(Logger.class).toInstance(LoggerFactory.getLogger(EventDispatch.class));
+    bind(Logger.class)
+        .annotatedWith(EventLogger.class)
+        .toInstance(LoggerFactory.getLogger(EventDispatch.class));
 
     bind(SettableReceiverTarget.class).to(ReceiverTargetImpl.class);
   }

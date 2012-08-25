@@ -1,4 +1,5 @@
 package com.getperka.sea.impl;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -32,19 +33,13 @@ import com.getperka.sea.inject.DecoratorScoped;
 @DecoratorScoped
 public class DecoratorContext implements EventDecorator.Context<Annotation, Event> {
 
-  private final Annotation annotation;
-  private final Event event;
-  private final ReceiverTarget target;
-  private final Callable<Object> work;
+  private Annotation annotation;
+  private Event event;
+  private ReceiverTarget target;
+  private Callable<Object> work;
 
   @Inject
-  protected DecoratorContext(Annotation annotation, Event event, ReceiverTarget target,
-      Callable<Object> work) {
-    this.annotation = annotation;
-    this.event = event;
-    this.target = target;
-    this.work = work;
-  }
+  protected DecoratorContext() {}
 
   @Override
   public Annotation getAnnotation() {
@@ -64,6 +59,15 @@ public class DecoratorContext implements EventDecorator.Context<Annotation, Even
   @Override
   public Callable<Object> getWork() {
     return work;
+  }
+
+  @Inject
+  void inject(Annotation annotation, Event event, ReceiverTarget target,
+      Callable<Object> work) {
+    this.annotation = annotation;
+    this.event = event;
+    this.target = target;
+    this.work = work;
   }
 
 }

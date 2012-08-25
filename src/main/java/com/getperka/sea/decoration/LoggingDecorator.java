@@ -1,4 +1,5 @@
 package com.getperka.sea.decoration;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -51,15 +52,14 @@ class LoggingDecorator implements EventDecorator<Logged, Event> {
         Logged annotation = ctx.getAnnotation();
         Event event = ctx.getEvent();
         Logger logger = LoggerFactory.getLogger(event.getClass());
-        logger.debug("Dispatching event");
-        if (!annotation.info().isEmpty()) {
-          logger.info(annotation.info());
-        }
-        if (!annotation.warn().isEmpty()) {
-          logger.warn(annotation.warn());
-        }
         if (!annotation.error().isEmpty()) {
           logger.error(annotation.error());
+        } else if (!annotation.warn().isEmpty()) {
+          logger.warn(annotation.warn());
+        } else if (!annotation.info().isEmpty()) {
+          logger.info(annotation.info());
+        } else {
+          logger.debug("Dispatching event");
         }
         return ctx.getWork().call();
       }

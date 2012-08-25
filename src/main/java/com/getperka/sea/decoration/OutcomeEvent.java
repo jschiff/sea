@@ -1,4 +1,5 @@
 package com.getperka.sea.decoration;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -204,5 +205,19 @@ public abstract class OutcomeEvent implements Event {
 
   public boolean isSuccess() {
     return success;
+  }
+
+  /**
+   * This is normally set by the {@link Implementation} decorator.
+   */
+  public void setFailure(Throwable failure) {
+    this.failure = failure;
+  }
+
+  /**
+   * This is normally set by the {@link Implementation} decorator.
+   */
+  public void setSuccess(boolean success) {
+    this.success = success;
   }
 }

@@ -41,6 +41,7 @@ import org.slf4j.Logger;
 import com.getperka.sea.Event;
 import com.getperka.sea.Receiver;
 import com.getperka.sea.ext.ReceiverTarget;
+import com.getperka.sea.inject.EventLogger;
 import com.google.inject.Injector;
 import com.google.inject.util.Providers;
 
@@ -54,8 +55,8 @@ public class DispatchMap {
    */
   private final Map<Class<? extends Event>, List<ReceiverTarget>> cache =
       new ConcurrentHashMap<Class<? extends Event>, List<ReceiverTarget>>();
-  private final Injector injector;
-  private final Logger logger;
+  private Injector injector;
+  private Logger logger;
   /**
    * The main registration datastructure. Maps {@link Event} types onto {@link ReceiverTarget}
    * instances.
@@ -67,15 +68,10 @@ public class DispatchMap {
    */
   private final Set<Class<?>> registered = new HashSet<Class<?>>();
 
-  private final Provider<SettableReceiverTarget> dispatchTargets;
+  private Provider<SettableReceiverTarget> dispatchTargets;
 
   @Inject
-  protected DispatchMap(Provider<SettableReceiverTarget> dispatchTargets, Injector injector,
-      Logger logger) {
-    this.dispatchTargets = dispatchTargets;
-    this.logger = logger;
-    this.injector = injector;
-  }
+  protected DispatchMap() {}
 
   /**
    * Returns an immutable list of the {@link ReceiverTarget} instances that should be used when
@@ -156,5 +152,13 @@ public class DispatchMap {
     }
     return toReturn.isEmpty() ? Collections.<ReceiverTarget> emptyList() :
         Collections.unmodifiableList(toReturn);
+  }
+
+  @Inject
+  void inject(Provider<SettableReceiverTarget> dispatchTargets, Injector injector,
+      @EventLogger Logger logger) {
+    this.dispatchTargets = dispatchTargets;
+    this.logger = logger;
+    this.injector = injector;
   }
 }

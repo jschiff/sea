@@ -37,23 +37,14 @@ import com.getperka.sea.inject.GlobalDecorators;
 @Singleton
 public class DispatchImpl implements EventDispatch {
 
-  private final Collection<AnnotatedElement> globalDecorators;
-  private final Provider<List<Invocation>> invocations;
-  private final DispatchMap map;
-  private final EventScope scope;
-  private final ExecutorService service;
+  private Collection<AnnotatedElement> globalDecorators;
+  private Provider<List<Invocation>> invocations;
+  private DispatchMap map;
+  private EventScope scope;
+  private ExecutorService service;
   private volatile boolean shutdown;
 
-  @Inject
-  protected DispatchImpl(@GlobalDecorators Collection<AnnotatedElement> globalDecorators,
-      Provider<List<Invocation>> invocations, EventScope scope,
-      DispatchMap map, ExecutorService service) {
-    this.globalDecorators = globalDecorators;
-    this.invocations = invocations;
-    this.map = map;
-    this.scope = scope;
-    this.service = service;
-  }
+  protected DispatchImpl() {}
 
   @Override
   public void addGlobalDecorator(AnnotatedElement element) {
@@ -94,5 +85,16 @@ public class DispatchImpl implements EventDispatch {
   public void shutdown() {
     shutdown = true;
     service.shutdown();
+  }
+
+  @Inject
+  void inject(@GlobalDecorators Collection<AnnotatedElement> globalDecorators,
+      Provider<List<Invocation>> invocations, EventScope scope,
+      DispatchMap map, ExecutorService service) {
+    this.globalDecorators = globalDecorators;
+    this.invocations = invocations;
+    this.map = map;
+    this.scope = scope;
+    this.service = service;
   }
 }

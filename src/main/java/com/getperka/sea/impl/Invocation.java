@@ -38,6 +38,7 @@ import com.getperka.sea.ext.EventDecoratorBinding;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.CurrentEvent;
 import com.getperka.sea.inject.DecoratorScope;
+import com.getperka.sea.inject.EventLogger;
 import com.getperka.sea.inject.EventScope;
 import com.getperka.sea.inject.EventScoped;
 import com.getperka.sea.inject.GlobalDecorators;
@@ -45,34 +46,17 @@ import com.google.inject.Injector;
 
 @EventScoped
 public class Invocation implements Callable<Object> {
-  private final DecoratorScope decoratorScope;
-  private final Event event;
-  private final EventScope eventScope;
-  private final Collection<AnnotatedElement> globalDecorators;
-  private final Injector injector;
-  private final Logger logger;
+  private Provider<EventDecorator.Context<Annotation, Event>> decoratorContexts;
+  private DecoratorScope decoratorScope;
+  private Event event;
+  private EventScope eventScope;
+  private Collection<AnnotatedElement> globalDecorators;
+  private Injector injector;
+  private Logger logger;
   private Callable<Object> toInvoke;
   private ReceiverTarget target;
 
-  private final Provider<EventDecorator.Context<Annotation, Event>> decoratorContexts;
-
-  @Inject
-  protected Invocation(
-      Provider<EventDecorator.Context<Annotation, Event>> decoratorContexts,
-      DecoratorScope decoratorScope,
-      @CurrentEvent Event event,
-      EventScope eventScope,
-      @GlobalDecorators Collection<AnnotatedElement> globalDecorators,
-      Injector injector,
-      Logger logger) {
-    this.decoratorContexts = decoratorContexts;
-    this.decoratorScope = decoratorScope;
-    this.event = event;
-    this.eventScope = eventScope;
-    this.globalDecorators = globalDecorators;
-    this.injector = injector;
-    this.logger = logger;
-  }
+  protected Invocation() {}
 
   @Override
   public Object call() throws Exception {
@@ -122,6 +106,24 @@ public class Invocation implements Callable<Object> {
   @Override
   public String toString() {
     return target.toString();
+  }
+
+  @Inject
+  void inject(
+      Provider<EventDecorator.Context<Annotation, Event>> decoratorContexts,
+      DecoratorScope decoratorScope,
+      @CurrentEvent Event event,
+      EventScope eventScope,
+      @GlobalDecorators Collection<AnnotatedElement> globalDecorators,
+      Injector injector,
+      @EventLogger Logger logger) {
+    this.decoratorContexts = decoratorContexts;
+    this.decoratorScope = decoratorScope;
+    this.event = event;
+    this.eventScope = eventScope;
+    this.globalDecorators = globalDecorators;
+    this.injector = injector;
+    this.logger = logger;
   }
 
   private void instantiateDecorators(AnnotatedElement elt) {
