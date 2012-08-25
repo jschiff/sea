@@ -77,7 +77,7 @@ public class DispatchImpl implements EventDispatch {
 
   @Override
   public void register(Class<?> receiver) {
-    map.register(receiver);
+    register(receiver, null);
   }
 
   @Override

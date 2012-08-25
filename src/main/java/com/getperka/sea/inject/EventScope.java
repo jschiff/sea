@@ -20,28 +20,38 @@ package com.getperka.sea.inject;
  * #L%
  */
 
+import java.util.ArrayDeque;
+import java.util.Deque;
+
 import com.getperka.sea.Event;
 import com.google.inject.Key;
 import com.google.inject.Provider;
 
 public class EventScope extends BaseScope {
-  private final ThreadLocal<Event> event = new ThreadLocal<Event>();
+  private final ThreadLocal<Deque<Event>> event = new ThreadLocal<Deque<Event>>() {
+    @Override
+    protected Deque<Event> initialValue() {
+      return new ArrayDeque<Event>();
+    }
+  };
 
   public void enter(Event event) {
-    if (this.event.get() != null) {
-      throw new IllegalStateException("Already in an EventScope");
-    }
-    this.event.set(event);
+    this.event.get().push(event);
   }
 
   public void exit() {
-    event.remove();
+    this.event.get().pop();
   }
 
   @Override
   public <T> Provider<T> scope(Key<T> key, Provider<T> unscoped) {
     if (Event.class.equals(key.getTypeLiteral().getRawType())) {
-      return cast(new ThreadLocalProvider<Event>(event));
+      return cast(new Provider<Event>() {
+        @Override
+        public Event get() {
+          return event.get().peek();
+        }
+      });
     }
     return unscoped;
   }

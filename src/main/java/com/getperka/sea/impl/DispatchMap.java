@@ -91,10 +91,6 @@ public class DispatchMap {
     return toReturn;
   }
 
-  public <T> void register(Class<T> receiver) {
-    register(receiver, null);
-  }
-
   public synchronized <T> void register(Class<T> receiver, Provider<? extends T> provider) {
     if (!registered.add(receiver)) {
       return;
