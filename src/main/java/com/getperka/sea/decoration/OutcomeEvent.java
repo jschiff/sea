@@ -20,6 +20,7 @@ package com.getperka.sea.decoration;
  * #L%
  */
 
+import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -75,17 +76,54 @@ import com.getperka.sea.ext.EventDecoratorBinding;
  * }
  * </pre>
  */
-public abstract class OutcomeEvent implements Event {
+public interface OutcomeEvent extends Event {
+  /**
+   * A base class that can be used when implementing {@link OutcomeEvent}.
+   */
+  public abstract class Base implements OutcomeEvent {
+    private Throwable failure;
+    private boolean success;
+
+    @Override
+    public Throwable getFailure() {
+      return failure;
+    }
+
+    @Override
+    public boolean isSuccess() {
+      return success;
+    }
+
+    @Override
+    public void setFailure(Throwable failure) {
+      this.failure = failure;
+    }
+
+    @Override
+    public void setSuccess(boolean success) {
+      this.success = success;
+    }
+  }
+
   /**
    * A receiver that should receive an {@link OutcomeEvent} only if
    * {@link OutcomeEvent#getFailure()} is non-null.
    * 
    * @see OutcomeEvent
    */
+  @Documented
   @EventDecoratorBinding(FailureFilter.class)
   @Retention(RetentionPolicy.RUNTIME)
   @Target({ ElementType.METHOD, ElementType.PACKAGE, ElementType.TYPE })
   public @interface Failure {}
+
+  static class FailureFilter implements EventDecorator<Failure, OutcomeEvent> {
+
+    @Override
+    public Callable<Object> wrap(Context<Failure, OutcomeEvent> ctx) {
+      return ctx.getEvent().getFailure() == null ? null : ctx.getWork();
+    }
+  }
 
   /**
    * The receiver responsible for updating the {@link OutcomeEvent} with the result of the
@@ -93,6 +131,7 @@ public abstract class OutcomeEvent implements Event {
    * 
    * @see OutcomeEvent
    */
+  @Documented
   @EventDecoratorBinding(ImplementationFilter.class)
   @Retention(RetentionPolicy.RUNTIME)
   @Target({ ElementType.METHOD, ElementType.PACKAGE, ElementType.TYPE })
@@ -105,25 +144,6 @@ public abstract class OutcomeEvent implements Event {
     boolean fireResult() default true;
   }
 
-  /**
-   * A receiver that should receive an {@link OutcomeEvent} only if {@link OutcomeEvent#isSuccess()}
-   * returns {@code true}.
-   * 
-   * @see OutcomeEvent
-   */
-  @EventDecoratorBinding(SuccessFilter.class)
-  @Retention(RetentionPolicy.RUNTIME)
-  @Target({ ElementType.METHOD, ElementType.PACKAGE, ElementType.TYPE })
-  public @interface Success {}
-
-  static class FailureFilter implements EventDecorator<Failure, OutcomeEvent> {
-
-    @Override
-    public Callable<Object> wrap(Context<Failure, OutcomeEvent> ctx) {
-      return ctx.getEvent().getFailure() == null ? null : ctx.getWork();
-    }
-  }
-
   static class ImplementationFilter implements EventDecorator<Implementation, OutcomeEvent> {
     private final EventDispatch dispatch;
 
@@ -134,16 +154,20 @@ public abstract class OutcomeEvent implements Event {
 
     @Override
     public Callable<Object> wrap(final Context<Implementation, OutcomeEvent> ctx) {
-      return ctx.getEvent().hasResult() ? null : new Callable<Object>() {
+      final OutcomeEvent event = ctx.getEvent();
+      boolean hasResult = event.isSuccess() || event.getFailure() != null;
+      if (hasResult) {
+        return null;
+      }
+      return new Callable<Object>() {
         @Override
         public Object call() throws Exception {
-          OutcomeEvent event = ctx.getEvent();
           try {
             Object toReturn = ctx.getWork().call();
-            event.success = true;
+            event.setSuccess(true);
             return toReturn;
           } catch (Throwable t) {
-            event.failure = t;
+            event.setFailure(t);
             return null;
           } finally {
             if (ctx.getAnnotation().fireResult()) {
@@ -153,8 +177,19 @@ public abstract class OutcomeEvent implements Event {
         }
       };
     }
-
   }
+
+  /**
+   * A receiver that should receive an {@link OutcomeEvent} only if {@link OutcomeEvent#isSuccess()}
+   * returns {@code true}.
+   * 
+   * @see OutcomeEvent
+   */
+  @Documented
+  @EventDecoratorBinding(SuccessFilter.class)
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target({ ElementType.METHOD, ElementType.PACKAGE, ElementType.TYPE })
+  public @interface Success {}
 
   static class SuccessFilter implements EventDecorator<Success, OutcomeEvent> {
     @Override
@@ -163,32 +198,24 @@ public abstract class OutcomeEvent implements Event {
     }
   }
 
-  private Throwable failure;
-  private boolean success;
+  /**
+   * Returns the exception thrown by the {@link Implementation} method that processed the event.
+   */
+  Throwable getFailure();
 
-  public Throwable getFailure() {
-    return failure;
-  }
-
-  public boolean hasResult() {
-    return isSuccess() || getFailure() != null;
-  }
-
-  public boolean isSuccess() {
-    return success;
-  }
+  /**
+   * Returns {@code true} if the {@link Implementation} that processed the event completed
+   * successfully.
+   */
+  boolean isSuccess();
 
   /**
    * This is normally set by the {@link Implementation} decorator.
    */
-  public void setFailure(Throwable failure) {
-    this.failure = failure;
-  }
+  void setFailure(Throwable t);
 
   /**
    * This is normally set by the {@link Implementation} decorator.
    */
-  public void setSuccess(boolean success) {
-    this.success = success;
-  }
+  void setSuccess(boolean success);
 }

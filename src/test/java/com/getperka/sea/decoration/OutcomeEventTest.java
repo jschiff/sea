@@ -1,4 +1,5 @@
 package com.getperka.sea.decoration;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -34,7 +35,7 @@ import com.getperka.sea.decoration.OutcomeEvent.Implementation;
 import com.getperka.sea.decoration.OutcomeEvent.Success;
 
 public class OutcomeEventTest {
-  static class MyEvent extends OutcomeEvent {
+  static class MyEvent extends OutcomeEvent.Base {
     private int value;
 
     public int getValue() {
