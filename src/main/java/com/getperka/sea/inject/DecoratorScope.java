@@ -1,4 +1,5 @@
 package com.getperka.sea.inject;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -23,6 +24,8 @@ import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.ReceiverTarget;
@@ -35,11 +38,15 @@ public class DecoratorScope extends BaseScope {
   private final ThreadLocal<Annotation> annotation = new ThreadLocal<Annotation>();
   private final ThreadLocal<Event> event = new ThreadLocal<Event>();
   private final ThreadLocal<ReceiverTarget> target = new ThreadLocal<ReceiverTarget>();
+  private final ThreadLocal<AtomicBoolean> wasDispatched = new ThreadLocal<AtomicBoolean>();
+  private final ThreadLocal<AtomicReference<Throwable>> wasThrown = new ThreadLocal<AtomicReference<Throwable>>();
   private final ThreadLocal<Callable<Object>> work = new ThreadLocal<Callable<Object>>();
   private final Map<Key<?>, ThreadLocal<?>> map = new HashMap<Key<?>, ThreadLocal<?>>();
 
   DecoratorScope() {
     map.put(Key.get(Annotation.class), annotation);
+    map.put(Key.get(AtomicBoolean.class, WasDispatched.class), wasDispatched);
+    map.put(Key.get(new TypeLiteral<AtomicReference<Throwable>>() {}, WasThrown.class), wasThrown);
     map.put(Key.get(Event.class), event);
     map.put(Key.get(ReceiverTarget.class), target);
     map.put(Key.get(new TypeLiteral<Callable<Object>>() {}), work);
@@ -75,9 +82,18 @@ public class DecoratorScope extends BaseScope {
     return this;
   }
 
+  public DecoratorScope withWasDispatched(AtomicBoolean wasDispatched) {
+    this.wasDispatched.set(wasDispatched);
+    return this;
+  }
+
+  public DecoratorScope withWasThrown(AtomicReference<Throwable> wasThrown) {
+    this.wasThrown.set(wasThrown);
+    return this;
+  }
+
   public DecoratorScope withWork(Callable<Object> work) {
     this.work.set(work);
     return this;
   }
-
 }

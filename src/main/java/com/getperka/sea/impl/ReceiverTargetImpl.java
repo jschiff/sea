@@ -29,7 +29,6 @@ import javax.inject.Provider;
  * Encapsulates a method and an instance on which to execute it.
  */
 public class ReceiverTargetImpl implements SettableReceiverTarget {
-  private Object instance;
   private Provider<?> instanceProvider;
   private Method method;
 
@@ -43,10 +42,7 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
     if (instanceProvider == null) {
       return null;
     }
-    if (instance != null) {
-      return instance;
-    }
-    return instance = instanceProvider.get();
+    return instanceProvider.get();
   }
 
   @Override

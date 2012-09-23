@@ -33,11 +33,13 @@ import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.inject.EventScope;
 import com.getperka.sea.inject.GlobalDecorators;
+import com.google.inject.Injector;
 
 @Singleton
-public class DispatchImpl implements EventDispatch {
+public class DispatchImpl implements EventDispatch, HasInjector {
 
   private Collection<AnnotatedElement> globalDecorators;
+  private Injector injector;
   private Provider<List<Invocation>> invocations;
   private DispatchMap map;
   private EventScope scope;
@@ -67,6 +69,11 @@ public class DispatchImpl implements EventDispatch {
   }
 
   @Override
+  public Injector getInjector() {
+    return injector;
+  }
+
+  @Override
   public void register(Class<?> receiver) {
     register(receiver, null);
   }
@@ -89,9 +96,10 @@ public class DispatchImpl implements EventDispatch {
 
   @Inject
   void inject(@GlobalDecorators Collection<AnnotatedElement> globalDecorators,
-      Provider<List<Invocation>> invocations, EventScope scope,
+      Injector injector, Provider<List<Invocation>> invocations, EventScope scope,
       DispatchMap map, ExecutorService service) {
     this.globalDecorators = globalDecorators;
+    this.injector = injector;
     this.invocations = invocations;
     this.map = map;
     this.scope = scope;

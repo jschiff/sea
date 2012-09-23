@@ -28,6 +28,8 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
@@ -66,22 +68,29 @@ public class Invocation implements Callable<Object> {
     Thread.currentThread().setName(toString());
     eventScope.enter(event);
     try {
+      final AtomicBoolean wasDispatched = new AtomicBoolean();
+      final AtomicReference<Throwable> wasThrown = new AtomicReference<Throwable>();
       toInvoke = new Callable<Object>() {
         @Override
-        public Object call() throws Exception {
+        public Object call() throws IllegalArgumentException, IllegalAccessException {
           try {
             return target.getMethod().invoke(target.getInstance(), event);
           } catch (InvocationTargetException e) {
-            // Clean up stack trace
-            return this.<RuntimeException> sneakyThrow(e.getCause());
+            // Provide stack trace in a useful context
+            wasThrown.set(e.getCause());
+            return null;
+          } finally {
+            wasDispatched.set(true);
           }
         }
-
-        @SuppressWarnings("unchecked")
-        private <T extends Throwable> Object sneakyThrow(Throwable t) throws T {
-          throw (T) t;
-        }
       };
+
+      // Set up the decorator scope to return information
+      decoratorScope
+          .withEvent(event)
+          .withTarget(target)
+          .withWasDispatched(wasDispatched)
+          .withWasThrown(wasThrown);
 
       Method method = target.getMethod();
       instantiateDecorators(method);
@@ -95,7 +104,9 @@ public class Invocation implements Callable<Object> {
       logger.error("Unhandled exception during event dispatch", e);
       throw e;
     } finally {
+      decoratorScope.exit();
       eventScope.exit();
+      Thread.currentThread().setName("idle");
     }
   }
 
@@ -130,7 +141,6 @@ public class Invocation implements Callable<Object> {
   }
 
   private void instantiateDecorators(AnnotatedElement elt) {
-    decoratorScope.withEvent(event).withTarget(target);
     for (final Annotation a : elt.getDeclaredAnnotations()) {
       if (toInvoke == null) {
         return;

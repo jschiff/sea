@@ -22,6 +22,8 @@ package com.getperka.sea.impl;
 
 import java.lang.annotation.Annotation;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.inject.Inject;
 
@@ -29,13 +31,16 @@ import com.getperka.sea.Event;
 import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.DecoratorScoped;
+import com.getperka.sea.inject.WasDispatched;
+import com.getperka.sea.inject.WasThrown;
 
 @DecoratorScoped
 public class DecoratorContext implements EventDecorator.Context<Annotation, Event> {
-
   private Annotation annotation;
   private Event event;
   private ReceiverTarget target;
+  private AtomicBoolean wasDispatched;
+  private AtomicReference<Throwable> wasThrown;
   private Callable<Object> work;
 
   @Inject
@@ -61,13 +66,25 @@ public class DecoratorContext implements EventDecorator.Context<Annotation, Even
     return work;
   }
 
+  @Override
+  public boolean wasDispatched() {
+    return wasDispatched.get();
+  }
+
+  @Override
+  public Throwable wasThrown() {
+    return wasThrown.get();
+  }
+
   @Inject
   void inject(Annotation annotation, Event event, ReceiverTarget target,
+      @WasDispatched AtomicBoolean wasDispatched, @WasThrown AtomicReference<Throwable> wasThrown,
       Callable<Object> work) {
     this.annotation = annotation;
     this.event = event;
     this.target = target;
+    this.wasDispatched = wasDispatched;
+    this.wasThrown = wasThrown;
     this.work = work;
   }
-
 }

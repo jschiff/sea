@@ -90,16 +90,28 @@ class TimedDecorator implements EventDecorator<Timed, Event> {
 
       @Override
       public Object call() throws Exception {
+        TimeoutError timeout = null;
         ThreadKiller killer = new ThreadKiller(Thread.currentThread(), ctx.getAnnotation());
         killer.start();
         try {
           return call(ctx.getWork());
         } catch (TimeoutError e) {
-          Logger logger = LoggerFactory.getLogger(ctx.getTarget().getMethod().getDeclaringClass());
-          logger.error("Timeout while executing " + ctx.getTarget(), e);
+          /*
+           * It's possible that the timeout error may have been pused into the stack while a
+           * decorator's Callable code is running.
+           */
+          timeout = e;
           return null;
         } finally {
           killer.cancel();
+          if (ctx.wasThrown() instanceof TimeoutError) {
+            timeout = (TimeoutError) ctx.wasThrown();
+          }
+          if (timeout != null) {
+            Logger logger = LoggerFactory
+                .getLogger(ctx.getTarget().getMethod().getDeclaringClass());
+            logger.error("Timeout while executing " + ctx.getTarget(), ctx.wasThrown());
+          }
         }
       }
 

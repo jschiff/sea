@@ -80,7 +80,7 @@ public interface OutcomeEvent extends Event {
   /**
    * A base class that can be used when implementing {@link OutcomeEvent}.
    */
-  public abstract class Base implements OutcomeEvent {
+  public class Base implements OutcomeEvent {
     private Throwable failure;
     private boolean success;
 
@@ -154,23 +154,30 @@ public interface OutcomeEvent extends Event {
 
     @Override
     public Callable<Object> wrap(final Context<Implementation, OutcomeEvent> ctx) {
-      final OutcomeEvent event = ctx.getEvent();
+      OutcomeEvent event = ctx.getEvent();
+
+      // Discard the invocation if the implementation has success or failure info
       boolean hasResult = event.isSuccess() || event.getFailure() != null;
       if (hasResult) {
         return null;
       }
+
       return new Callable<Object>() {
         @Override
         public Object call() throws Exception {
+          OutcomeEvent event = ctx.getEvent();
           try {
             Object toReturn = ctx.getWork().call();
-            event.setSuccess(true);
+            // Only record data if the underlying ReceiverTarget was invoked.
+            if (ctx.wasDispatched()) {
+              Throwable thrown = ctx.wasThrown();
+              event.setFailure(thrown);
+              event.setSuccess(thrown == null);
+            }
             return toReturn;
-          } catch (Throwable t) {
-            event.setFailure(t);
-            return null;
           } finally {
-            if (ctx.getAnnotation().fireResult()) {
+            // Optionally re-dispatch the event to trigger @Success / @Failure receivers
+            if (ctx.wasDispatched() && ctx.getAnnotation().fireResult()) {
               dispatch.fire(event);
             }
           }

@@ -29,6 +29,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +49,17 @@ import com.google.inject.PrivateModule;
 import com.google.inject.TypeLiteral;
 
 public class EventModule extends PrivateModule {
+
+  private static class MyFactory implements ThreadFactory {
+    private final ThreadGroup g = new ThreadGroup("SEA Dispatch");
+
+    @Override
+    public Thread newThread(Runnable r) {
+      return new Thread(g, r);
+    }
+  }
+
+  private final int numThreads = Integer.getInteger("EventModule.numThreads", 128);
 
   @Override
   protected void configure() {
@@ -70,14 +83,9 @@ public class EventModule extends PrivateModule {
     bind(EventDispatch.class).to(DispatchImpl.class);
     expose(EventDispatch.class);
 
-    bind(ExecutorService.class).toInstance(Executors.newCachedThreadPool(new ThreadFactory() {
-      private final ThreadGroup g = new ThreadGroup("SEA Dispatch");
-
-      @Override
-      public Thread newThread(Runnable r) {
-        return new Thread(g, r);
-      }
-    }));
+    // Create a reasonably-sized pool
+    bind(ExecutorService.class).toInstance(
+        Executors.newFixedThreadPool(numThreads, new MyFactory()));
 
     bind(new TypeLiteral<Collection<AnnotatedElement>>() {})
         .annotatedWith(GlobalDecorators.class)
@@ -95,24 +103,34 @@ public class EventModule extends PrivateModule {
   }
 
   private void bindReceiverScope() {
-    DecoratorScope receiverScope = new DecoratorScope();
-    bindScope(DecoratorScoped.class, receiverScope);
-    bind(DecoratorScope.class).toInstance(receiverScope);
+    DecoratorScope decoratorScope = new DecoratorScope();
+    bindScope(DecoratorScoped.class, decoratorScope);
+    bind(DecoratorScope.class).toInstance(decoratorScope);
 
     bind(Annotation.class)
-        .toProvider(receiverScope.<Annotation> provider())
-        .in(receiverScope);
+        .toProvider(decoratorScope.<Annotation> provider())
+        .in(decoratorScope);
+
+    bind(AtomicBoolean.class)
+        .annotatedWith(WasDispatched.class)
+        .toProvider(decoratorScope.<AtomicBoolean> provider())
+        .in(decoratorScope);
+
+    bind(new TypeLiteral<AtomicReference<Throwable>>() {})
+        .annotatedWith(WasThrown.class)
+        .toProvider(decoratorScope.<AtomicReference<Throwable>> provider())
+        .in(decoratorScope);
 
     bind(Event.class)
-        .toProvider(receiverScope.<Event> provider())
-        .in(receiverScope);
+        .toProvider(decoratorScope.<Event> provider())
+        .in(decoratorScope);
 
     bind(ReceiverTarget.class)
-        .toProvider(receiverScope.<ReceiverTarget> provider())
-        .in(receiverScope);
+        .toProvider(decoratorScope.<ReceiverTarget> provider())
+        .in(decoratorScope);
 
     bind(new TypeLiteral<Callable<Object>>() {})
-        .toProvider(receiverScope.<Callable<Object>> provider())
-        .in(receiverScope);
+        .toProvider(decoratorScope.<Callable<Object>> provider())
+        .in(decoratorScope);
   }
 }

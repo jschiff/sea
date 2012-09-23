@@ -115,6 +115,17 @@ public interface EventDecorator<A extends Annotation, E extends Event> {
      * invoked receiver or a replacement value provided by another decorator.
      */
     Callable<Object> getWork();
+
+    /**
+     * Returns {@code true} if the {@link ReceiverTarget} was invoked with an {@link Event} (i.e.
+     * none of the target's {@link EventDecorator} wrappers returned {@code null}).
+     */
+    boolean wasDispatched();
+
+    /**
+     * Returns the exception that was thrown by the {@link ReceiverTarget}.
+     */
+    Throwable wasThrown();
   }
 
   /**

@@ -1,4 +1,5 @@
 package com.getperka.sea.decoration;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -19,10 +20,14 @@ package com.getperka.sea.decoration;
  * #L%
  */
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
@@ -32,8 +37,11 @@ import com.getperka.sea.EventDispatch;
 import com.getperka.sea.EventDispatchers;
 import com.getperka.sea.Receiver;
 import com.getperka.sea.decoration.TimedDecorator.TimeoutError;
+import com.getperka.sea.ext.EventDecorator;
+import com.getperka.sea.ext.EventDecoratorBinding;
 
 public class TimedDecoratorTest {
+
   class InterruptedReceiver {
     boolean interrupted;
 
@@ -58,6 +66,39 @@ public class TimedDecoratorTest {
     }
   }
 
+  static class SlowDecorator implements EventDecorator<SlowEvent, Event> {
+    static CountDownLatch latch;
+
+    @Override
+    public Callable<Object> wrap(Context<SlowEvent, Event> ctx) {
+      // Sanity check
+      assertNotNull(latch);
+      assertEquals(1, latch.getCount());
+
+      return new Callable<Object>() {
+        @Override
+        public Object call() throws Exception {
+          try {
+            doWait();
+          } catch (TimeoutError e) {
+            latch.countDown();
+            TimedDecoratorTest.<RuntimeException> sneakyThrow(e);
+          }
+          return null;
+        }
+      };
+    }
+
+    synchronized void doWait() throws TimeoutError, InterruptedException {
+      wait();
+    }
+
+  }
+
+  @EventDecoratorBinding(SlowDecorator.class)
+  @Retention(RetentionPolicy.RUNTIME)
+  @interface SlowEvent {}
+
   class StoppedReceiver {
     TimeoutError caught;
 
@@ -78,16 +119,24 @@ public class TimedDecoratorTest {
          * written. The error is re-thrown to mimic the behavior of code that is actually killed.
          */
         caught = e;
-        this.<RuntimeException> sneakyThrow(e);
+        TimedDecoratorTest.<RuntimeException> sneakyThrow(e);
       } finally {
         latch.countDown();
       }
     }
 
-    @SuppressWarnings("unchecked")
-    private <T extends Throwable> void sneakyThrow(Throwable t) throws T {
-      throw (T) t;
-    }
+  }
+
+  @Timed(value = 10, stop = true)
+  class StoppedReceiverWithSlowEvent {
+    @Receiver
+    @SlowEvent
+    void noOp(Event event) {}
+  }
+
+  @SuppressWarnings("unchecked")
+  static <T extends Throwable> void sneakyThrow(Throwable t) throws T {
+    throw (T) t;
   }
 
   private final EventDispatch dispatch = EventDispatchers.create();
@@ -117,5 +166,14 @@ public class TimedDecoratorTest {
     dispatch.fire(new Event() {});
     latch.await();
     assertNotNull(receiver.caught);
+  }
+
+  @Test(timeout = 1000)
+  public void testStopInSlowDecorator() throws InterruptedException {
+    SlowDecorator.latch = latch;
+    StoppedReceiverWithSlowEvent receiver = new StoppedReceiverWithSlowEvent();
+    dispatch.register(receiver);
+    dispatch.fire(new Event() {});
+    latch.await();
   }
 }
