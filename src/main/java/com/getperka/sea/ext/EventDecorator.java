@@ -94,6 +94,15 @@ import com.getperka.sea.EventDispatch;
  * @see EventDispatch#addGlobalDecorator
  */
 public interface EventDecorator<A extends Annotation, E extends Event> {
+  /**
+   * Supplies an {@link EventDecorator} with information about the current execution context.
+   * Instances of Context will be provided to {@link EventDecorator#wrap} by the dispatch plumbing.
+   * <p>
+   * This interface may be subject to expansion in the future.
+   * 
+   * @param <A> the annotation type used to bind instances of the EventDecorator
+   * @param <E> the expected event type
+   */
   public interface Context<A extends Annotation, E extends Event> {
     /**
      * The binding annotation that triggered the {@link EventDecorator}.
@@ -129,7 +138,9 @@ public interface EventDecorator<A extends Annotation, E extends Event> {
   }
 
   /**
-   * Allows custom logic to be applied during an event receiver invocation.
+   * Allows custom logic to be applied during an event receiver invocation. An EventDecorator may
+   * cancel the dispatch of an event by returning {@code null} from this method. This will also
+   * prevent any other EventDecorators in the chain from having their {@code wrap} method called.
    * 
    * @param ctx the event dispatch context
    * @return a callable with appropriate decorations applied

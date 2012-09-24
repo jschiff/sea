@@ -1,4 +1,5 @@
 package com.getperka.sea.inject;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -28,7 +29,8 @@ import javax.inject.Scope;
 import com.getperka.sea.ext.EventDecorator;
 
 /**
- * A scope annotation that is valid during the invocation of a single {@link EventDecorator} call.
+ * A scope annotation that is valid during the invocation of a single {@link EventDecorator#wrap}
+ * call.
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

@@ -20,6 +20,7 @@ package com.getperka.sea;
  * #L%
  */
 
+import static com.getperka.sea.TestConstants.testDelay;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -174,8 +175,6 @@ public class EventSmokeTest {
   private static volatile CountDownLatch latch;
 
   private final EventDispatch dispatch = EventDispatchers.create();
-
-  private static final long testDelay = 100;
 
   @Before
   public void before() {

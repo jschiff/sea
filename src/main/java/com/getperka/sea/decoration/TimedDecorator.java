@@ -22,11 +22,13 @@ package com.getperka.sea.decoration;
 
 import java.util.concurrent.Callable;
 
+import javax.inject.Inject;
+
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.EventDecorator;
+import com.getperka.sea.inject.EventLogger;
 
 /**
  * Implements a simple timeout mechanism for preventing excessive thread wall-time.
@@ -84,6 +86,10 @@ class TimedDecorator implements EventDecorator<Timed, Event> {
   @SuppressWarnings("serial")
   static class TimeoutError extends Throwable {}
 
+  @EventLogger
+  @Inject
+  private Logger logger;
+
   @Override
   public Callable<Object> wrap(final Context<Timed, Event> ctx) {
     return new Callable<Object>() {
@@ -108,8 +114,6 @@ class TimedDecorator implements EventDecorator<Timed, Event> {
             timeout = (TimeoutError) ctx.wasThrown();
           }
           if (timeout != null) {
-            Logger logger = LoggerFactory
-                .getLogger(ctx.getTarget().getMethod().getDeclaringClass());
             logger.error("Timeout while executing " + ctx.getTarget(), ctx.wasThrown());
           }
         }

@@ -19,7 +19,7 @@ package com.getperka.sea.decoration;
  * limitations under the License.
  * #L%
  */
-
+import static com.getperka.sea.TestConstants.testDelay;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -142,7 +142,7 @@ public class TimedDecoratorTest {
   private final EventDispatch dispatch = EventDispatchers.create();
   private final CountDownLatch latch = new CountDownLatch(1);
 
-  @Test(timeout = 1000)
+  @Test(timeout = testDelay)
   public void testInterrupt() throws InterruptedException {
     InterruptedReceiver receiver = new InterruptedReceiver();
     dispatch.register(receiver);
@@ -151,7 +151,7 @@ public class TimedDecoratorTest {
     assertTrue(receiver.interrupted);
   }
 
-  @Test(timeout = 1000)
+  @Test(timeout = testDelay)
   public void testOk() throws InterruptedException {
     OkReceiver receiver = new OkReceiver();
     dispatch.register(receiver);
@@ -159,7 +159,7 @@ public class TimedDecoratorTest {
     latch.await();
   }
 
-  @Test(timeout = 1000)
+  @Test(timeout = testDelay)
   public void testStop() throws InterruptedException {
     StoppedReceiver receiver = new StoppedReceiver();
     dispatch.register(receiver);
@@ -168,7 +168,7 @@ public class TimedDecoratorTest {
     assertNotNull(receiver.caught);
   }
 
-  @Test(timeout = 1000)
+  @Test(timeout = testDelay)
   public void testStopInSlowDecorator() throws InterruptedException {
     SlowDecorator.latch = latch;
     StoppedReceiverWithSlowEvent receiver = new StoppedReceiverWithSlowEvent();

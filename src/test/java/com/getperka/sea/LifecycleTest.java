@@ -19,7 +19,7 @@ package com.getperka.sea;
  * limitations under the License.
  * #L%
  */
-
+import static com.getperka.sea.TestConstants.testDelay;
 import static org.junit.Assert.assertEquals;
 
 import java.util.concurrent.CountDownLatch;
@@ -86,7 +86,7 @@ public class LifecycleTest {
   /**
    * Tests implicit instance creation.
    */
-  @Test(timeout = 1000)
+  @Test(timeout = testDelay)
   public void test() throws InterruptedException {
     EventDispatch dispatch = EventDispatchers.create();
     dispatch.register(MyReceiver.class);
@@ -103,7 +103,7 @@ public class LifecycleTest {
   /**
    * Tests giving an explicit instance to {@link EventDispatch}.
    */
-  @Test(timeout = 1000)
+  @Test(timeout = testDelay)
   public void testExplicitInstance() throws InterruptedException {
     EventDispatch dispatch = EventDispatchers.create();
     dispatch.register(new MyReceiver());
@@ -120,7 +120,7 @@ public class LifecycleTest {
   /**
    * Tests the interation of the {@link Singleton} annotation.
    */
-  @Test(timeout = 1000000)
+  @Test(timeout = testDelay)
   public void testSingletonInstance() throws InterruptedException {
     EventDispatch dispatch = EventDispatchers.create();
     dispatch.register(MySingletonReceiver.class);

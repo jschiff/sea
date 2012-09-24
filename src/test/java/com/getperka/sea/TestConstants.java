@@ -1,5 +1,4 @@
-package com.getperka.sea.impl;
-
+package com.getperka.sea;
 /*
  * #%L
  * Simple Event Architecture
@@ -20,11 +19,6 @@ package com.getperka.sea.impl;
  * #L%
  */
 
-import com.google.inject.Injector;
-
-/**
- * Internal plumbing interface that allows access to the {@link Injector}.
- */
-public interface HasInjector {
-  Injector getInjector();
+public class TestConstants {
+  public static final int testDelay = 1000;
 }

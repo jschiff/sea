@@ -1,4 +1,5 @@
 package com.getperka.sea.inject;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -22,8 +23,13 @@ package com.getperka.sea.inject;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
+import org.slf4j.Logger;
+
 import com.google.inject.BindingAnnotation;
 
+/**
+ * An SLF4J {@link Logger} instance.
+ */
 @BindingAnnotation
 @Retention(RetentionPolicy.RUNTIME)
 public @interface EventLogger {}

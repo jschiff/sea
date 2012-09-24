@@ -19,7 +19,7 @@ package com.getperka.sea.order;
  * limitations under the License.
  * #L%
  */
-
+import static com.getperka.sea.TestConstants.testDelay;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
@@ -127,8 +127,6 @@ public class OrderTest {
 
   }
 
-  static final int timeout = 100000;
-
   OrderedDispatch batch;
   EventDispatch dispatch;
   CountDownLatch latch;
@@ -148,7 +146,7 @@ public class OrderTest {
     dispatch.register(receiver);
   }
 
-  @Test(timeout = timeout)
+  @Test(timeout = testDelay)
   public void test() throws InterruptedException {
     List<MyEvent> events = makeEvents();
     batch.fire(events);
@@ -156,7 +154,7 @@ public class OrderTest {
     assertEquals(events, receiver.received);
   }
 
-  @Test(timeout = timeout)
+  @Test(timeout = testDelay)
   public void testInterference() throws InterruptedException {
     dispatch.addGlobalDecorator(RefiredDecorator.class);
     List<MyEvent> events = makeEvents();
@@ -165,7 +163,7 @@ public class OrderTest {
     assertEquals(events, receiver.received);
   }
 
-  @Test(timeout = timeout)
+  @Test(timeout = testDelay)
   public void testReverse() throws InterruptedException {
     List<MyEvent> events = makeEvents();
     Collections.reverse(events);

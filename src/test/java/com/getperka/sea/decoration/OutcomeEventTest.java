@@ -19,7 +19,7 @@ package com.getperka.sea.decoration;
  * limitations under the License.
  * #L%
  */
-
+import static com.getperka.sea.TestConstants.testDelay;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -75,11 +75,10 @@ public class OutcomeEventTest {
     }
   }
 
-  private static final int testTimeout = 100000;
   private EventDispatch dispatch = EventDispatchers.create();
   private CountDownLatch latch = new CountDownLatch(1);
 
-  @Test(timeout = testTimeout)
+  @Test(timeout = testDelay)
   public void testFailure() throws InterruptedException {
     MyReceiver r = new MyReceiver();
     dispatch.register(r);
@@ -92,7 +91,7 @@ public class OutcomeEventTest {
     assertNotNull(r.thrown);
   }
 
-  @Test(timeout = testTimeout)
+  @Test(timeout = testDelay)
   public void testSuccess() throws InterruptedException {
     MyReceiver r = new MyReceiver();
     dispatch.register(r);

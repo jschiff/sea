@@ -1,4 +1,8 @@
 package com.getperka.sea.ext;
+
+import com.getperka.sea.Event;
+import com.getperka.sea.Receiver;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -19,21 +23,26 @@ package com.getperka.sea.ext;
  * #L%
  */
 
-import java.lang.reflect.Method;
-
 /**
- * Encapsulates a method and an instance on which to execute it.
+ * Encapsulates a method and an instance on which to execute it. ReceiverTargets have a 1:1 mapping
+ * to their underlying {@link Receiver} method declarations.
  */
 public interface ReceiverTarget {
+  /**
+   * Dispatch an Event to the target. Any {@link EventDecorator} types bound to the target will wrap
+   * the method invocation. This method is intended for use by decorators that must defer execution
+   * of a target to some other callback or event-driven mechanism.
+   * 
+   * @param event the Event to dispatch
+   * @return the value returned by the {@link Receiver} method, or replaced by an interveining
+   *         {@link EventDecorator}
+   */
+  Object dispatch(Event event) throws Exception;
 
   /**
-   * The instance on which the method will be executed or {@code null} if the method is static.
+   * For debugging use only. Returns the signature of the method that the ReceiverTarget will
+   * execute.
    */
-  public Object getInstance();
-
-  /**
-   * The method to execute.
-   */
-  public Method getMethod();
-
+  @Override
+  String toString();
 }

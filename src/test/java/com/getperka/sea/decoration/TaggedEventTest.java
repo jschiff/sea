@@ -1,4 +1,5 @@
 package com.getperka.sea.decoration;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -18,7 +19,7 @@ package com.getperka.sea.decoration;
  * limitations under the License.
  * #L%
  */
-
+import static com.getperka.sea.TestConstants.testDelay;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -67,12 +68,11 @@ public class TaggedEventTest {
   static final String markerString = "TaggedEvent";
   static final Tag tagClass = Tag.create(markerClass);
   static final Tag tagString = Tag.create(markerString);
-  static final int testTimeout = 100;
 
   private EventDispatch dispatch = EventDispatchers.create();
   private CountDownLatch latch;
 
-  @Test(timeout = testTimeout)
+  @Test(timeout = testDelay)
   public void testAll() throws InterruptedException {
     latch = new CountDownLatch(2);
     MyReceiver receiver = new MyReceiver();
@@ -89,7 +89,7 @@ public class TaggedEventTest {
     assertFalse(receiver.none);
   }
 
-  @Test(timeout = testTimeout)
+  @Test(timeout = testDelay)
   public void testAny() throws InterruptedException {
     latch = new CountDownLatch(1);
     MyReceiver receiver = new MyReceiver();
@@ -105,7 +105,7 @@ public class TaggedEventTest {
     assertFalse(receiver.none);
   }
 
-  @Test(timeout = testTimeout)
+  @Test(timeout = testDelay)
   public void testNone() throws InterruptedException {
     latch = new CountDownLatch(1);
     MyReceiver receiver = new MyReceiver();
