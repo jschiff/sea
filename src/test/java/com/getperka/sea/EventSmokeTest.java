@@ -24,6 +24,7 @@ import static com.getperka.sea.TestConstants.testDelay;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -179,7 +180,7 @@ public class EventSmokeTest {
   @Before
   public void before() {
     decoratorCalled = false;
-    latch = new CountDownLatch(1);
+    latch = null;
     received.clear();
 
     dispatch.addGlobalDecorator(getClass());
@@ -193,6 +194,7 @@ public class EventSmokeTest {
 
   @Test(timeout = testDelay)
   public void testDecoratorIgnoresOtherEvent() throws InterruptedException {
+    latch = new CountDownLatch(1);
     dispatch.register(InstanceReceiver.class);
     // Ensure double-registering is a no-op
     dispatch.register(InstanceReceiver.class);
@@ -249,6 +251,43 @@ public class EventSmokeTest {
   }
 
   @Test(timeout = testDelay)
+  public void testRegistration() throws InterruptedException {
+    Registration registrationA = dispatch.register(StaticReceiver.class);
+    Registration registrationB = dispatch.register(new InstanceReceiver());
+    dispatch.register(new InstanceReceiver());
+    test(new MyEvent(), 3);
+
+    registrationA.cancel();
+    registrationB.cancel();
+    // Ensure double-cancel is harmless
+    registrationB.cancel();
+
+    // Make sure the remaining registration still fires
+    test(new MyEvent(), 1);
+  }
+
+  /**
+   * Ensure that registering a target twice doesn't cause multiple dispatch.
+   */
+  @Test(timeout = testDelay)
+  public void testReregistration() throws InterruptedException {
+    Registration registrationA = dispatch.register(StaticReceiver.class);
+    Registration registrationB = dispatch.register(StaticReceiver.class);
+    assertNotSame(registrationA, registrationB);
+
+    test();
+
+    // Verify that all registrations must be canceled in order to prevent dispatches
+    registrationA.cancel();
+
+    test();
+
+    registrationB.cancel();
+
+    test(new MyEvent(), 0);
+  }
+
+  @Test(timeout = testDelay)
   public void testShutdown() throws InterruptedException {
     dispatch.register(ShutdownReceiver.class);
     test();
@@ -261,14 +300,18 @@ public class EventSmokeTest {
   }
 
   private void test() throws InterruptedException {
-    test(new MyEvent());
+    test(new MyEvent(), 1);
   }
 
-  private void test(Event event) throws InterruptedException {
+  private void test(Event event, int count) throws InterruptedException {
+    latch = new CountDownLatch(count);
+
     dispatch.fire(event);
     latch.await();
-    assertEquals(1, received.size());
-    assertSame(event, received.poll());
+    assertEquals(count, received.size());
+    while (!received.isEmpty()) {
+      assertSame(event, received.poll());
+    }
     assertTrue(decoratorCalled);
   }
 }

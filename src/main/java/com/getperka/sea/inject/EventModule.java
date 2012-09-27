@@ -45,6 +45,8 @@ import com.getperka.sea.impl.DispatchMap;
 import com.getperka.sea.impl.Invocation;
 import com.getperka.sea.impl.ReceiverTargetImpl;
 import com.getperka.sea.impl.SettableReceiverTarget;
+import com.getperka.sea.impl.SettableRegistration;
+import com.getperka.sea.impl.SettableRegistrationImpl;
 import com.google.inject.PrivateModule;
 import com.google.inject.TypeLiteral;
 
@@ -100,6 +102,7 @@ public class EventModule extends PrivateModule {
         .toInstance(LoggerFactory.getLogger(EventDispatch.class));
 
     bind(SettableReceiverTarget.class).to(ReceiverTargetImpl.class);
+    bind(SettableRegistration.class).to(SettableRegistrationImpl.class);
   }
 
   private void bindReceiverScope() {

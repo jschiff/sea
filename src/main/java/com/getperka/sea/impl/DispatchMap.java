@@ -20,11 +20,10 @@ package com.getperka.sea.impl;
  * #L%
  */
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -36,13 +35,9 @@ import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
 
-import org.slf4j.Logger;
-
 import com.getperka.sea.Event;
-import com.getperka.sea.Receiver;
+import com.getperka.sea.Registration;
 import com.getperka.sea.ext.ReceiverTarget;
-import com.getperka.sea.inject.EventLogger;
-import com.google.inject.Injector;
 import com.google.inject.util.Providers;
 
 /**
@@ -55,22 +50,18 @@ public class DispatchMap {
    */
   private final Map<Class<? extends Event>, List<ReceiverTarget>> cache =
       new ConcurrentHashMap<Class<? extends Event>, List<ReceiverTarget>>();
-  private Provider<SettableReceiverTarget> dispatchTargets;
-  private Injector injector;
-  private Logger logger;
   /**
-   * The main registration datastructure. Maps {@link Event} types onto {@link ReceiverTarget}
-   * instances.
+   * The main registration datastructure.
    */
-  private final Map<Class<? extends Event>, Queue<ReceiverTarget>> map =
-      new ConcurrentHashMap<Class<? extends Event>, Queue<ReceiverTarget>>();
-  /**
-   * Prevents duplicate registrations of receiver types.
-   */
-  private final Set<Class<?>> registered = new HashSet<Class<?>>();
+  private final Queue<SettableRegistration> registered = new ConcurrentLinkedQueue<SettableRegistration>();
+  private Provider<SettableRegistration> registrations;
 
-  @Inject
   protected DispatchMap() {}
+
+  public void cancel(SettableRegistration registration) {
+    registered.remove(registration);
+    cache.clear();
+  }
 
   /**
    * Returns an immutable list of the {@link ReceiverTarget} instances that should be used when
@@ -86,56 +77,18 @@ public class DispatchMap {
     return toReturn;
   }
 
-  public synchronized <T> void register(Class<T> receiver, Provider<? extends T> provider) {
-    if (!registered.add(receiver)) {
-      return;
-    }
-
-    for (Method m : receiver.getDeclaredMethods()) {
-      if (!m.isAnnotationPresent(Receiver.class)) {
-        continue;
-      }
-      Class<?>[] params = m.getParameterTypes();
-      if (params.length != 1) {
-        logger.warn("Ignoring {}.{} becasue it has more than one argument",
-            receiver.getName(), m.getName());
-        continue;
-      }
-      if (!Event.class.isAssignableFrom(params[0])) {
-        logger.warn("Ignoring {}.{} because its sole argument is not assignable to Event",
-            receiver.getName(), m.getName());
-        continue;
-      }
-      Class<? extends Event> event = params[0].asSubclass(Event.class);
-
-      Queue<ReceiverTarget> queue = map.get(event);
-      if (queue == null) {
-        queue = new ConcurrentLinkedQueue<ReceiverTarget>();
-        // Only mutated in this synchronized method, so don't need putIfAbsent()
-        map.put(event, queue);
-      }
-
-      m.setAccessible(true);
-      SettableReceiverTarget target = dispatchTargets.get();
-      if (Modifier.isStatic(m.getModifiers())) {
-        target.setStaticDispatch(m);
-      } else {
-        if (provider == null) {
-          provider = injector.getProvider(receiver);
-        }
-        target.setInstanceDispatch(provider, m);
-      }
-      queue.add(target);
-      logger.debug("{}.{} will receive {}",
-          new Object[] { receiver.getName(), m.getName(), event.getName() });
-    }
+  public <T> Registration register(Class<T> receiver, Provider<? extends T> provider) {
+    SettableRegistration registration = registrations.get();
+    registration.set(receiver, provider);
+    registered.add(registration);
     cache.clear();
+    return registration;
   }
 
-  public void register(Object receiver) {
+  public Registration register(Object receiver) {
     @SuppressWarnings("unchecked")
     Class<Object> clazz = (Class<Object>) receiver.getClass();
-    register(clazz, Providers.of(receiver));
+    return register(clazz, Providers.of(receiver));
   }
 
   /**
@@ -143,21 +96,20 @@ public class DispatchMap {
    * This method looks for receivers whose event type is assignable from the given event.
    */
   List<ReceiverTarget> findTargets(Class<? extends Event> event) {
-    List<ReceiverTarget> toReturn = new ArrayList<ReceiverTarget>();
-    for (Map.Entry<Class<? extends Event>, Queue<ReceiverTarget>> entry : map.entrySet()) {
-      if (entry.getKey().isAssignableFrom(event)) {
-        toReturn.addAll(entry.getValue());
-      }
+    // Use a Set to de-duplicate targets if there are multiple registrations
+    Set<ReceiverTarget> toReturn = new HashSet<ReceiverTarget>();
+
+    for (Iterator<SettableRegistration> it = registered.iterator(); it.hasNext();) {
+      SettableRegistration registration = it.next();
+      toReturn.addAll(registration.getReceiverTargets(event));
     }
+
     return toReturn.isEmpty() ? Collections.<ReceiverTarget> emptyList() :
-        Collections.unmodifiableList(toReturn);
+        Collections.unmodifiableList(new ArrayList<ReceiverTarget>(toReturn));
   }
 
   @Inject
-  void inject(Provider<SettableReceiverTarget> dispatchTargets, Injector injector,
-      @EventLogger Logger logger) {
-    this.dispatchTargets = dispatchTargets;
-    this.logger = logger;
-    this.injector = injector;
+  void inject(Provider<SettableRegistration> registrations) {
+    this.registrations = registrations;
   }
 }

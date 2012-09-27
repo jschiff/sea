@@ -24,8 +24,10 @@ import com.getperka.sea.Receiver;
  */
 
 /**
- * Encapsulates a method and an instance on which to execute it. ReceiverTargets have a 1:1 mapping
- * to their underlying {@link Receiver} method declarations.
+ * Encapsulates a method and an instance on which to execute it.
+ * <p>
+ * Two ReceiverTargets are equal only if they will dispatch to the same method on the same instance
+ * (or no instance in the case of static receivers).
  */
 public interface ReceiverTarget {
   /**

@@ -31,6 +31,7 @@ import javax.inject.Singleton;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
+import com.getperka.sea.Registration;
 import com.getperka.sea.inject.EventScope;
 import com.getperka.sea.inject.GlobalDecorators;
 import com.google.inject.Injector;
@@ -74,18 +75,18 @@ public class DispatchImpl implements EventDispatch, HasInjector {
   }
 
   @Override
-  public void register(Class<?> receiver) {
-    register(receiver, null);
+  public Registration register(Class<?> receiver) {
+    return register(receiver, null);
   }
 
   @Override
-  public <T> void register(Class<T> receiver, Provider<? extends T> provider) {
-    map.register(receiver, provider);
+  public <T> Registration register(Class<T> receiver, Provider<? extends T> provider) {
+    return map.register(receiver, provider);
   }
 
   @Override
-  public void register(Object receiver) {
-    map.register(receiver);
+  public Registration register(Object receiver) {
+    return map.register(receiver);
   }
 
   @Override

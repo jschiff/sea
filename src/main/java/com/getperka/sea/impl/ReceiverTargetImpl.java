@@ -172,6 +172,27 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
   }
 
   @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof ReceiverTargetImpl)) {
+      return false;
+    }
+    ReceiverTargetImpl other = (ReceiverTargetImpl) o;
+    // Object identity comparison intentional
+    return (instanceProvider == other.instanceProvider
+      || instanceProvider.equals(other.instanceProvider)) &&
+      (method == other.method || method.equals(other.method));
+  }
+
+  @Override
+  public int hashCode() {
+    return (instanceProvider == null ? 0 : instanceProvider.hashCode()) * 13 +
+      (method == null ? 0 : method.hashCode()) * 7;
+  }
+
+  @Override
   public void setInstanceDispatch(Provider<?> provider, Method method) {
     this.instanceProvider = provider;
     this.method = method;
