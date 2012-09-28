@@ -128,6 +128,11 @@ public class EventModule extends PrivateModule {
         .toProvider(decoratorScope.<Event> provider())
         .in(decoratorScope);
 
+    bind(Object.class)
+        .annotatedWith(ReceiverInstance.class)
+        .toProvider(decoratorScope.<Object> provider())
+        .in(decoratorScope);
+
     bind(ReceiverTarget.class)
         .toProvider(decoratorScope.<ReceiverTarget> provider())
         .in(decoratorScope);

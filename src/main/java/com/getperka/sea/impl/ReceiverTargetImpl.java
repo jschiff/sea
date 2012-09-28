@@ -47,6 +47,7 @@ import com.getperka.sea.inject.DecoratorScope;
 import com.getperka.sea.inject.EventLogger;
 import com.getperka.sea.inject.EventScope;
 import com.getperka.sea.inject.GlobalDecorators;
+import com.getperka.sea.inject.ReceiverInstance;
 import com.google.inject.Injector;
 import com.google.inject.TypeLiteral;
 
@@ -61,18 +62,21 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
     private final AtomicBoolean wasDispatched = new AtomicBoolean();
     private final AtomicReference<Throwable> wasThrown = new AtomicReference<Throwable>();
     private final Event event;
+    private final Object instance;
 
     public Work(DecoratorScope decoratorScope, Event event) {
       this.event = event;
+      instance = instanceProvider == null ? null : instanceProvider.get();
       decoratorScope
           .withWasDispatched(wasDispatched)
+          .withReceiverInstance(instance == null ? ReceiverInstance.STATIC_INVOCATION : instance)
           .withWasThrown(wasThrown);
     }
 
     @Override
     public Object call() throws IllegalArgumentException, IllegalAccessException {
       try {
-        return method.invoke(instanceProvider == null ? null : instanceProvider.get(), event);
+        return method.invoke(instance, event);
       } catch (InvocationTargetException e) {
         // Clean up the stack trace
         Throwable cause = e.getCause();

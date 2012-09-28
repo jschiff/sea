@@ -37,6 +37,7 @@ public class DecoratorScope extends BaseScope {
 
   private final ThreadLocal<Annotation> annotation = new ThreadLocal<Annotation>();
   private final ThreadLocal<Event> event = new ThreadLocal<Event>();
+  private final ThreadLocal<Object> receiverInstance = new ThreadLocal<Object>();
   private final ThreadLocal<ReceiverTarget> target = new ThreadLocal<ReceiverTarget>();
   private final ThreadLocal<AtomicBoolean> wasDispatched = new ThreadLocal<AtomicBoolean>();
   private final ThreadLocal<AtomicReference<Throwable>> wasThrown = new ThreadLocal<AtomicReference<Throwable>>();
@@ -48,6 +49,7 @@ public class DecoratorScope extends BaseScope {
     map.put(Key.get(AtomicBoolean.class, WasDispatched.class), wasDispatched);
     map.put(Key.get(new TypeLiteral<AtomicReference<Throwable>>() {}, WasThrown.class), wasThrown);
     map.put(Key.get(Event.class), event);
+    map.put(Key.get(Object.class, ReceiverInstance.class), receiverInstance);
     map.put(Key.get(ReceiverTarget.class), target);
     map.put(Key.get(new TypeLiteral<Callable<Object>>() {}), work);
   }
@@ -74,6 +76,11 @@ public class DecoratorScope extends BaseScope {
 
   public DecoratorScope withEvent(Event event) {
     this.event.set(event);
+    return this;
+  }
+
+  public DecoratorScope withReceiverInstance(Object provider) {
+    this.receiverInstance.set(provider);
     return this;
   }
 

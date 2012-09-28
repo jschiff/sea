@@ -1,4 +1,5 @@
 package com.getperka.sea.decoration;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -65,20 +66,29 @@ public interface TaggedEvent extends Event {
      * Create a tag using a class as the marker.
      */
     public static Tag create(Class<?> clazz) {
-      return new Tag("Class: " + clazz.getName());
+      return new Tag(clazz.hashCode(), ("Class: " + clazz.getName()).intern());
+    }
+
+    /**
+     * Create a tag using a receiver instance as the marker. When combined with
+     * {@link Tagged#receiverInstance()}, this allows an event receiver to only receive the events
+     * that it sent.
+     */
+    public static Tag create(Object receiver) {
+      return new Tag(System.identityHashCode(receiver), receiver);
     }
 
     /**
      * Create a tag using a string as the marker.
      */
     public static Tag create(String string) {
-      return new Tag("String: " + string);
+      return new Tag(string.hashCode(), ("String: " + string).intern());
     }
 
-    private final String value;
     private final int hashCode;
+    private final Object value;
 
-    private Tag(String value) {
+    private Tag(int hashCode, Object value) {
       this.value = value;
       this.hashCode = value.hashCode();
     }
@@ -91,7 +101,11 @@ public interface TaggedEvent extends Event {
       if (!(obj instanceof Tag)) {
         return false;
       }
-      return value.equals(((Tag) obj).value);
+      /*
+       * Object comparison intentional; string values will have been interned, and receivers must be
+       * compared by identity, not by value.
+       */
+      return value == ((Tag) obj).value;
     }
 
     @Override
@@ -101,7 +115,8 @@ public interface TaggedEvent extends Event {
 
     @Override
     public String toString() {
-      return value;
+      // Avoid NPE with value.toString()
+      return String.valueOf(value);
     }
   }
 
@@ -124,13 +139,21 @@ public interface TaggedEvent extends Event {
     TagMode mode() default TagMode.ALL;
 
     /**
+     * Match using the instance of the receiver. Only events with a tag created using
+     * {@link Tag#create(Object)} referencing the receiver instance will match. This matching mode
+     * is especially useful when events are re-fired after being processed.
+     * 
+     * @see OutcomeEvent
+     */
+    boolean receiverInstance() default false;
+
+    /**
      * Match using string-based tags.
      */
     String[] strings() default {};
   }
 
   static class TaggedFilter implements EventDecorator<Tagged, TaggedEvent> {
-
     @Override
     public Callable<Object> wrap(Context<Tagged, TaggedEvent> ctx) {
       Tagged annotation = ctx.getAnnotation();
@@ -140,6 +163,9 @@ public interface TaggedEvent extends Event {
       }
       for (String string : annotation.strings()) {
         annotationTags.add(Tag.create(string));
+      }
+      if (annotation.receiverInstance()) {
+        annotationTags.add(Tag.create(ctx.getReceiverInstance()));
       }
       TaggedEvent evt = ctx.getEvent();
 

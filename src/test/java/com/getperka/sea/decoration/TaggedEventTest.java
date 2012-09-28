@@ -40,6 +40,7 @@ public class TaggedEventTest {
   class MyReceiver {
     boolean all;
     boolean any;
+    boolean instance;
     boolean none;
 
     @Tagged(classes = TaggedEventTest.class, strings = markerString, mode = TagMode.ALL)
@@ -56,7 +57,15 @@ public class TaggedEventTest {
       latch.countDown();
     }
 
-    @Tagged(classes = TaggedEventTest.class, strings = markerString, mode = TagMode.NONE)
+    @Tagged(receiverInstance = true)
+    @Receiver
+    void instance(MyEvent evt) {
+      instance = true;
+      latch.countDown();
+    }
+
+    @Tagged(classes = TaggedEventTest.class, strings = markerString, receiverInstance = true,
+        mode = TagMode.NONE)
     @Receiver
     void none(MyEvent evt) {
       none = true;
@@ -103,6 +112,27 @@ public class TaggedEventTest {
     assertFalse(receiver.all);
     assertTrue(receiver.any);
     assertFalse(receiver.none);
+  }
+
+  @Test(timeout = testDelay)
+  public void testInstance() throws InterruptedException {
+    latch = new CountDownLatch(2);
+    MyReceiver receiverA = new MyReceiver();
+    MyReceiver receiverB = new MyReceiver();
+
+    dispatch.register(receiverA);
+    dispatch.register(receiverB);
+
+    MyEvent evt = new MyEvent();
+    evt.addTag(Tag.create(receiverB));
+
+    dispatch.fire(evt);
+    latch.await();
+
+    assertFalse(receiverA.instance);
+    assertTrue(receiverA.none);
+    assertTrue(receiverB.instance);
+    assertFalse(receiverB.none);
   }
 
   @Test(timeout = testDelay)

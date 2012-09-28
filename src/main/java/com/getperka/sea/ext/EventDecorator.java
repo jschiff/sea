@@ -21,11 +21,11 @@ package com.getperka.sea.ext;
  */
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
 import java.util.concurrent.Callable;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
+import com.getperka.sea.Receiver;
 
 /**
  * An EventDecorator can be used for contextual setup when dispatching events to particular
@@ -115,7 +115,13 @@ public interface EventDecorator<A extends Annotation, E extends Event> {
     E getEvent();
 
     /**
-     * The receiving {@link Method} and instance.
+     * Returns the instance the {@link Receiver} method is being invoked upon. If the method being
+     * invoked is static, this method will return an arbitrary object.
+     */
+    Object getReceiverInstance();
+
+    /**
+     * The receiving target.
      */
     ReceiverTarget getTarget();
 
