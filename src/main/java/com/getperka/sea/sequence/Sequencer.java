@@ -1,4 +1,5 @@
-package com.getperka.sea.activity;
+package com.getperka.sea.sequence;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -30,17 +31,25 @@ import javax.inject.Inject;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.Registration;
+import com.getperka.sea.decoration.TaggedEvent.Tag;
 
 /**
- * An Activity represents a unit of work that must maintain state across a number of events. An
- * activity succeeds or fails as a single unit, represented by a blocking call to {@link #call()}.
+ * An Sequencer manages a unit of work that must maintain state across a number of events. A
+ * sequence succeeds or fails as a single unit, represented by a blocking call to {@link #call()}.
+ * <p>
+ * This class might also be named {@code Activity}, {@code Behavior}, or {@code Controller}, were
+ * these names not excessively generic.
  * <p>
  * Users must call {@link #setEventDispatch(EventDispatch)} directly if not using an injection
- * framework to construct their Activity instances.
+ * framework to construct their Sequencer instances.
+ * <p>
+ * If concurrent instances of a Sequencer are expected, consider overriding {@link #fire(Event)} to
+ * add an instance tag using {@link Tag#create(Object)} and annotate the subtype with
+ * {@code @Tagged(receiverInstance = true)}.
  * 
- * @param <T> the type of data returned by the Activity
+ * @param <T> the type of data returned by the Sequencer
  */
-public abstract class Activity<T> implements Callable<T> {
+public abstract class Sequencer<T> implements Callable<T> {
   /**
    * Ensures that only one thread at a time may call {@link #execute}.
    */
@@ -53,25 +62,30 @@ public abstract class Activity<T> implements Callable<T> {
   private final ReentrantLock executingLock;
   private boolean isExecuting;
   private T toReturn;
-  private ActivityFailureException toThrow;
+  private SequenceFailureException toThrow;
 
-  protected Activity() {
+  protected Sequencer() {
     executingLock = new ReentrantLock();
     done = executingLock.newCondition();
   }
 
   /**
-   * Executes the Activity and blocks until one of {@link #finish} or {@link #fail} are called.
+   * Executes a sequence of events and blocks until one of {@link #finish} or {@link #fail} are
+   * called.
+   * <p>
+   * Upon execution, the Sequencer instance will be automatically registered with the
+   * {@link EventDispatch} instance. Similarly, the Sequencer will be detached from the
+   * EventDispatch once a termination method has been called.
    * <p>
    * If one of the termination methods is not called, the method call will never return. Guaranteed
    * timeout behavior can be implemented by using a {@link ScheduledExecutorService} to schedule a
    * work unit to check {@link #isExecuting()} and possibly call {@link #fail} at a specific time.
    * 
    * @return the value provided to {@link #finish(Object)}.
-   * @throws ActivityFailureException with the details of any call to {@link #fail}
+   * @throws SequenceFailureException with the details of any call to {@link #fail}
    */
   @Override
-  public T call() throws ActivityFailureException {
+  public T call() throws SequenceFailureException {
     if (dispatch == null) {
       throw new IllegalStateException("Must call setEventDispatch() before executing");
     }
@@ -87,7 +101,7 @@ public abstract class Activity<T> implements Callable<T> {
     Registration registration = dispatch.register(this);
     try {
       // Start the work
-      executeImpl();
+      start();
       // Wait until finish has been called
       done.awaitUninterruptibly();
       // Maybe throw a failure exception
@@ -97,7 +111,6 @@ public abstract class Activity<T> implements Callable<T> {
       // Return the value
       return toReturn;
     } finally {
-      isExecuting = false;
       // Don't retain the value being returned
       toReturn = null;
       toThrow = null;
@@ -105,11 +118,16 @@ public abstract class Activity<T> implements Callable<T> {
       registration.cancel();
       // Clean up the lock count
       executingLock.unlock();
-      // Allow new callers into execute()
+      // Allow new callers into call()
       callSemaphore.release();
     }
   }
 
+  /**
+   * Returns the {@link EventDispatch} in use by the Sequencer.
+   * 
+   * @see #fire(Event)
+   */
   public EventDispatch getEventDispatch() {
     return dispatch;
   }
@@ -131,12 +149,6 @@ public abstract class Activity<T> implements Callable<T> {
     this.dispatch = dispatch;
   }
 
-  /**
-   * Subclasses must implement this method and ensure that one of {@link #finish} or {@link #fail}
-   * are called (generally from a separate thread in response to an event callback).
-   */
-  protected abstract void executeImpl();
-
   protected final void fail(String message) {
     fail(message, null);
   }
@@ -144,7 +156,8 @@ public abstract class Activity<T> implements Callable<T> {
   protected final void fail(String message, Throwable cause) {
     executingLock.lock();
     checkExecuting();
-    toThrow = new ActivityFailureException(message, cause);
+    isExecuting = false;
+    toThrow = new SequenceFailureException(message, cause);
     toThrow.fillInStackTrace();
     done.signalAll();
     executingLock.unlock();
@@ -153,13 +166,14 @@ public abstract class Activity<T> implements Callable<T> {
   protected final void finish(T toReturn) {
     executingLock.lock();
     checkExecuting();
+    isExecuting = false;
     this.toReturn = toReturn;
     done.signalAll();
     executingLock.unlock();
   }
 
   /**
-   * Fires an event only if the activity is executing.
+   * Fires an event only if the Sequencer is executing.
    */
   protected void fire(Event event) {
     if (isExecuting()) {
@@ -167,9 +181,15 @@ public abstract class Activity<T> implements Callable<T> {
     }
   }
 
+  /**
+   * Subclasses must implement this method and ensure that one of {@link #finish} or {@link #fail}
+   * are called (generally from a separate thread in response to an event callback).
+   */
+  protected abstract void start();
+
   private void checkExecuting() {
     if (!isExecuting) {
-      throw new IllegalStateException("The activity is not currently executing");
+      throw new IllegalStateException("The Sequencer is not currently executing");
     }
   }
 }

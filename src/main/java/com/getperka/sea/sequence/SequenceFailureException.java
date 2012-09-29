@@ -1,4 +1,5 @@
-package com.getperka.sea.activity;
+package com.getperka.sea.sequence;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -19,14 +20,13 @@ package com.getperka.sea.activity;
  * #L%
  */
 
-public class ActivityFailureException extends RuntimeException {
+/**
+ * Throws from {@link Sequencer#call()} if {@link Sequencer#fail} has been called.
+ */
+public class SequenceFailureException extends RuntimeException {
   private static final long serialVersionUID = 5247065513152393065L;
 
-  public ActivityFailureException(String message) {
-    super(message);
-  }
-
-  public ActivityFailureException(String message, Throwable cause) {
+  public SequenceFailureException(String message, Throwable cause) {
     super(message, cause);
   }
 }
