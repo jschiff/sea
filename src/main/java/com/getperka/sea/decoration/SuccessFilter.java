@@ -1,5 +1,4 @@
 package com.getperka.sea.decoration;
-
 /*
  * #%L
  * Simple Event Architecture
@@ -20,16 +19,13 @@ package com.getperka.sea.decoration;
  * #L%
  */
 
-import java.util.Set;
+import java.util.concurrent.Callable;
 
-import com.getperka.sea.Event;
+import com.getperka.sea.ext.EventDecorator;
 
-/**
- * An event type that can be filtered by receiver based on runtime tags.
- */
-public interface TaggedEvent extends Event {
-  /**
-   * Returns a set containing the event's tags. The returned set may be immutable.
-   */
-  Set<Tag> getTags();
+class SuccessFilter implements EventDecorator<Success, OutcomeEvent> {
+  @Override
+  public Callable<Object> wrap(Context<Success, OutcomeEvent> ctx) {
+    return ctx.getEvent().isSuccess() ? ctx.getWork() : null;
+  }
 }

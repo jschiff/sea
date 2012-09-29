@@ -1,5 +1,4 @@
 package com.getperka.sea.decoration;
-
 /*
  * #%L
  * Simple Event Architecture
@@ -20,16 +19,22 @@ package com.getperka.sea.decoration;
  * #L%
  */
 
-import java.util.Set;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import com.getperka.sea.Event;
+import com.getperka.sea.ext.EventDecoratorBinding;
 
 /**
- * An event type that can be filtered by receiver based on runtime tags.
+ * A receiver that should receive an {@link OutcomeEvent} only if
+ * {@link OutcomeEvent#getFailure()} is non-null.
+ * 
+ * @see OutcomeEvent
  */
-public interface TaggedEvent extends Event {
-  /**
-   * Returns a set containing the event's tags. The returned set may be immutable.
-   */
-  Set<Tag> getTags();
-}
+@Documented
+@EventDecoratorBinding(FailureFilter.class)
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ ElementType.METHOD, ElementType.PACKAGE, ElementType.TYPE })
+public @interface Failure {}

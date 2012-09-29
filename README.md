@@ -1,10 +1,23 @@
 # Simple Event Architecture
 
-The Simple Event Architecture makes it simple to write event-based applications or components with a minimum of syntax.
+The Simple Event Architecture makes possible to write a highly-concurrent, event-based application or component with a minimum of friction.
+
+The Maven coordinates for SEA are:
+```xml
+<dependency>
+  <groupId>com.getperka.sea</groupId>
+  <artifactId>sea</artifactId>
+  <version>RELEASE</version>
+</dependency>
+```
+
+## Background
+
+The impetus for this project was to re-write a tool for managing Perka's deployments to EC2.  Like most V1 system-administration tools, the original code had gotten fairly hairy due to continued hacking, the need to support many special cases, a lack of factoring, and was unable to easily handle partial-success scenarios.  The desired coding style for the V2 tool is to be semi-declarative (i.e. "Do this when" instead of "Did this happen?"), composeable, and easily maintainable.  Ideally, a "show all uses of" search in an IDE will definitively identify all pieces of code that are side-effects of a semantic event.  The ability to perform many concurrent operations without juggling `Futures` is a plus.
 
 ## Design
 
-The core API performs exactly two functions: event dispatch and event decoration.
+The core API performs exactly two functions: event dispatch and event decoration.  All "interesting" functionality is built using the decorator pattern.
 
 ### Events
 
@@ -19,7 +32,7 @@ No specific annotations or informal protocols are required to route an event obj
 
 ### Event Receivers
 
-Event receivers are single-argument methods annotated with `@Receiver` that accept a type assignable to `Event`. These methods may have any access modifier, name, and return type.  A class may contain any number of receivers for any number of event types, or multiple receivers for the same event type.
+Event receivers are single-argument methods annotated with `@Receiver` that accept a type assignable to `Event`. These methods may have any access modifier, name, and return type.  Receivers are permitted to throw checked exceptions.  A class may contain any number of receivers for any number of event types, or multiple receivers for the same event type.
 
 ```java
 class MyReceiver {
@@ -107,3 +120,281 @@ Multiple calls to `EventDispatch.addGlobalDecorator()` register a set of decorat
 Instances of `EventDecorators` must have a zero-arg constructor or a Guice binding.  Once the instance of the decorator has been obtained, its `wrap()` method will be called in order to build up a work chain.  The entire receiver dispatch chain is constructed before `call()` is invoked on the outermost decoration wrapper.  The `EventDecorator.Context` supplied to the decorator provides access to a variety of information about the event dispatch that is about to occur.
 
 Because one of the chief functions of decorators is to act as a filter to prevent certain events from reaching a receiver, it is valid for a decorator's `wrap()` method to return `null`.  If an event is canceled by a decorator during dispatch setup, the decorators that have already run will not receive any notification that the event dispatch did not actually occur.  Thus, it is important for decorators to defer any externally-visible effects (e.g. persistence context setup) to the return `Callable.call()` method.  If filtering requires access to expensive resources, the check can be performed in the `call()` method itself, which simply elects to skip the call to `ctx.getWork().call()`.  If it is important for the decoration logic to know whether or not the receiver method was invoked or if it threw an exception, the `Context.wasDispatched()` or `Context.wasThrown()` methods can be consulted after the call to `ctx.getWork().call()` is made.
+
+## Provided Services
+
+The core distribution includes a variety of convenience services for building up complex behaviors.  Often, several decorators will be used simultaneously, thus these services attempt to maximize orthogonality.
+
+### Logging
+
+The `@Logged` decorator will emit a specified message via SLF4J whenever an event receiver is invoked.  The annotation has properties that correspond to a message at `info`, `warn`, or `error` levels.  Is it mainly useful for debugging when applied globally.
+
+```java
+@Logged(info = "Doing it")
+class ReceivesMyEvent {
+  @Receiver
+  void myEvent(MyEvent evt) {}
+}
+```
+
+### Tagging
+
+The `@Tagged` filter is used with events that implement the `TaggedEvent` interface (or extend the `BaseTaggedEvent` class).  Events can be filtered by matching string or class-literal tags that are applied at runtime.
+
+#### Literal Tags
+
+```java
+class FooEvent extends BaseTaggedEvent {
+}
+
+@Tagged(strings = "verbose")
+class VerboseEventDescriber {
+  @Receiver
+  void describe(FooEvent evt) {
+    logger.info(evt.getInterestingStuff());
+  }
+
+  @Receiver
+  void describe(BarEvent evt) {
+    logger.info(evt.getInterestingStuff());
+  }
+}
+
+class Sender {
+  void send() {
+    FooEvent evt = new FooEvent();
+    evt.addTag(Tag.create("verbose"));
+    eventDispatch.fire(evt);
+  }
+}
+```
+
+The `@Tagged` annotation allows multiple string or class literals to be applied.  Matching can be further customized by providing a `mode = TagMode.ALL` or `mode = TagMode.NONE`.
+
+#### Instance Tags
+
+In many cases it is desirable to send events only to a specific instance of an event receiver.  This occurs when events are used to return the results of an operation requested by an event sender.  In this use-case, a `@Tagged(receiverInstance = true)` can be used to allow only events that refer to the instance of the receiver.  See `Sequencers` below for a fully-developed use case.
+
+```java
+class TalkingToMe {
+  @Tagged(receiverInstance = true)
+  @Receiver
+  void onEvent(MyTaggedEvent evt) {}
+}
+
+class Sender {
+  void send() {
+    MyTaggedEvent evt = new MyTaggedEvent();
+    evt.addTag(Tag.create(someInstanceOfTalkingToMe));
+    eventDispatch.fire(evt);
+  }
+}
+```
+
+### Timed Events
+
+In some cases, it is useful to generate an error condition if an event takes too long to process (e.g. events that trigger remote network operations).  The `@Timed` decorator can be used to specify a timeout before interrupting or killing the thread that is processing the event.
+
+```java
+class MightBeSlow {
+  @Timed(value = 2, unit = TimeUnit.SECONDS)
+  @Receiver
+  void maybeSlow(MyEvent evt) throws InterruptedException {
+    // Start a process
+    someLockCondition.await();
+    // Do more stuff
+  }
+}
+```
+
+The above declaration will trigger a `Thread.interrupt()` after the receiver has been running for two seconds.  If the `stop = true` value is specified in the annotation, `Thread.stop()` will be called.  The usual caveats to stopping a thread still apply.
+
+### Outcome Events
+
+An `OutcomeEvent` is used for scatter-gather events where one event receiver fires events that are operated on by a second receiver which returns information back to the original receiver via the same event object.  It uses several different decorators to specify implementation, on-success, and on-failure receivers.  `OutcomeEvent` extends `TaggedEvent` in order to use receiver tagging when returning the event to the original caller.
+
+```java
+class AddEvent extends BaseOutcomeEvent  {
+  // Data as public properties for brevity
+  public List<Integer> operands;
+  public int total;
+}
+
+class Sender {
+  void example() {
+    // Set up the event
+    AddEvent evt = new AddEvent();
+    evt.operands = Arrays.asList(1, 2, 3);
+    eventDispatch.fire(evt);
+  }
+
+  @Receiver
+  @Success
+  void addEventSuccess(AddEvent evt) {
+    logger.info("The total is " + evt.total);
+  }
+
+  @Receiver
+  @Failure
+  void addEventFailure(AddEvent evt) {
+    // OutcomeEvent.getFailure() returns a Throwable
+    logger.error("Add failed", evt.getFailure());
+  }
+}
+
+class Implementor {
+  @Receiver
+  @Implementation
+  void addEventImplementation(AddEvent evt) {
+    evt.total = sumOfList(evt.operands);
+  }
+}
+```
+
+The `@Implementation` filter checks the incoming `OutcomeEvent` to see if its `isSuccess()` or `getFailure()` are `false` and `null` respectively.  If the event has not yet been processed, it is passed on the receiver method.  One the receiver method returns or throws an exception, the event is updated accordingly and automatically re-fired.  Conversely, the `@Success` and `@Failure` filters only allow an `OutcomeEvent` through if the `isSuccess` or `getFailure` is `true` or non-`null`.
+
+## Ordered Events
+
+The concurrent nature of event dispatch means that the order in which events are received is essentially unpredictable.  In cases where predicable dispatch order is required, the `OrderedDispatch` utility class combined with the `@Ordered` decorator can be used.
+
+```java
+class LoadResourceEvent extends BaseOutcomeEvent {
+  // Public properties for brevity
+  public String contents;
+  public String name;
+}
+
+class ResourceLoader {
+  @Receiver
+  @Implementation
+  // Not @Ordered, because resources can be loaded concurrently
+  void load(LoadResourceEvent evt) {
+    evt.contents = loadContentsForName(evt.name);
+  }
+}
+
+class Example {
+  private final Tag last = Tag.create("last");
+
+  void go() {
+    List<LoadResourceEvent> orderedEvents = makeLoadEvents();
+    orderedEvents.get(orderedEvents.size() - 1).addTag(last);
+
+    // Assume both "this" and a ResourceLoader already registered elsewhere
+    OrderedDispatchers.create(eventDispatch).fire(orderedEvents);
+  }
+
+  @Receiver
+  @Success
+  @Ordered
+  void loadSuccess(LoadResourceEvent evt) {
+    output.append(evt.contents);
+    if (evt.getTags().contains(last)) {
+      output.close();
+    }
+  }
+}
+```
+
+For a given list of events, each call to an `@Ordered` receiver will return before the next call is made.
+
+It is possible to mix ordered and un-ordered receiver methods from the same call to `OrderedDispatch.fire()`.  If there are multiple `@Ordered` receivers that would receive the event sequence, they each independently receive events in the same sequence, however they will do so at their own rate.
+
+## Sequencers
+
+It is often impractical to store the intermediate state of an ongoing process in a single event.  Furthermore, most non-trivial processes will require multiple, possibly concurrent, events to be sent and received.  The `Sequencer` base class is used to encapsulate non-trivial event sequences into a reusable component.  (This type could just as easily be called an "Activity" or a "Controller", but these terms are heavily overloaded.  If you're familiar with MIDI, the name should make more sense.)
+
+Implementations of `Sequencer<T>` present their encapsulated event sequence as a blocking `T call()` method (and also implement `Callable<T>` for convenience).  When called, the `Sequencer` will register itself with an associated `EventDispatch` instance, and call the `protected abstract start()` method.  A `Sequencer` subclass will likely fire and receive multiple (concurrent) events, eventually culminating in a call to `finish()` or `fail()`.  When one of the termination methods is called, the blocking call to `call()` will either return the value passed to `finish()` or throw a `SequenceFailureException`.  If concurrent instances of a particular sequence are expected, using `TaggedEvent` with distinct tag values will prevent cross-talk.
+
+```java
+class ResourceLoadEvent extends BaseOutcomeEvent {
+  // Public properties used for brevity, getTags() omitted
+  public String contents;
+  public String resourceName;
+}
+
+class ResourceLoader {
+  @Receiver
+  @Implementation
+  void load(ResourceLoadEvent evt) {
+    evt.contents = loadContentsForResource(evt.resourceName);
+  }
+}
+
+@Tagged(receiverInstance = true)
+class LoadResourcesSequencer extends Sequencer<Map<String, String>> {
+  public List<String> resourceNames;
+  // Return-to-sender tag
+  private Tag myTag = Tag.create(this);
+  private Map<String, String> state = new ConcurrentHashMap<String, String>();
+
+  protected void start() {
+    for (String name : resourceNames) {
+      ResourceLoadEvent evt = new ResourceLoadEvent();
+      evt.resourceName = name;
+      evt.getTags().add(myTag);
+      fire(evt);
+    }
+  }
+
+  @Receiver
+  @Success
+  void loadEventSuccess(ResourceLoadEvent evt) {
+    state.put(evt.resourceName, evt.contents);
+    if (state.size() == resourceNames.size()) {
+      finish(state);
+    }
+  }
+
+  @Receiver
+  @Failure
+  void loadEventFailure(ResourceLoadEvent evt) {
+    // This is overly simplistic, a more robust system would retry
+    fail("Could not load resource", evt.getFailure());
+  }
+}
+
+class Example {
+  void go() {
+    LoadResourcesSequencer seq = new LoadResourcesSequencer();
+    seq.resourceNames = Arrays.asList("one", "two", "three");
+
+    // Set the EventDispatch that we assume has a ResourceLoader already registered
+    seq.setEventDispatch(eventDispatch);
+    
+    // All of the concurrency complexity is hidden behind a synchronous call!
+    Map<String, String> contentMap = seq.call();
+
+    // Do stuff
+  }
+}
+```
+
+It is important to note that the `call()` method is not reentrant.  If multiple threads attempt to call the same `Sequencer`, the invocations will stack up, one behind the other.  This behavior is necessary because the termination methods, `finish()` and `fail()` will likely be called from an event receiver thread and not directly from `start`.  If the termination methods are not called, the `call()` method will never return.  In order to prevent the accumulation of dead threads, it is suggested that `Sequencers` are called from an `@Timed(stop = true)` event receiver.  For example:
+
+```java
+class LoadABunchOfResourcesEvent extends BaseOutcomeEvent {
+  public List<String> resourceNames;
+  public Map<String, String> namesToContent;
+}
+
+class ResourceLoader {
+  @Receiver
+  @Implementation
+  @Timed(value = 5, unit = TimeUnit.MINUTES, stop = true)`
+  void load(LoadABunchOfResourcesEvent evt) {
+    LoadResourcesSequencer seq = new LoadResourcesSequencer();
+    seq.setEventDispatch(eventDispatch);
+    seq.resourceNames = evt.resourceNames;
+    evt.namesToContent = seq.call();
+  }
+}
+
+// Elsewhere an @Success and @Failure pair exist to call the multiple-load event
+```
+
+The use of event-dispatched sequences allows composite `Sequencers` to be built that can use `@Success` and `@Failure` pairs to robustly handle partial success and failures of their component sequences.
+
+## Guice
+
+SEA uses Guice internally for object lifecycle management.  Users who already use Guice may mix `EventModule` into their configuration.  All receiver and decorator instance creation is delegated to the `Injector`.  Several scoped binding annotations are available in the `sea.inject` package.

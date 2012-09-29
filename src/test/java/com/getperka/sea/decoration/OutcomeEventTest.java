@@ -30,12 +30,9 @@ import org.junit.Test;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.EventDispatchers;
 import com.getperka.sea.Receiver;
-import com.getperka.sea.decoration.OutcomeEvent.Failure;
-import com.getperka.sea.decoration.OutcomeEvent.Implementation;
-import com.getperka.sea.decoration.OutcomeEvent.Success;
 
 public class OutcomeEventTest {
-  static class MyEvent extends OutcomeEvent.Base {
+  static class MyEvent extends BaseOutcomeEvent {
     private int value;
 
     public int getValue() {

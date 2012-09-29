@@ -1,5 +1,4 @@
 package com.getperka.sea.decoration;
-
 /*
  * #%L
  * Simple Event Architecture
@@ -20,16 +19,20 @@ package com.getperka.sea.decoration;
  * #L%
  */
 
-import java.util.Set;
-
-import com.getperka.sea.Event;
-
 /**
- * An event type that can be filtered by receiver based on runtime tags.
+ * Alters how a {@link Tagged} annotation is compared to {@link TaggedEvent#getTags()}.
  */
-public interface TaggedEvent extends Event {
+public enum TagMode {
   /**
-   * Returns a set containing the event's tags. The returned set may be immutable.
+   * The event matches if it has any of the tags described in the {@link Tagged} filter.
    */
-  Set<Tag> getTags();
+  ANY,
+  /**
+   * The event matches only if it has all of the tags described in the {@link Tagged} filter.
+   */
+  ALL,
+  /**
+   * The event matches only if it has none of the tags described in the {@link Tagged} filter.
+   */
+  NONE;
 }

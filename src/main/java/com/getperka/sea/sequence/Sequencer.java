@@ -31,11 +31,11 @@ import javax.inject.Inject;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.Registration;
-import com.getperka.sea.decoration.TaggedEvent.Tag;
+import com.getperka.sea.decoration.Tag;
 
 /**
- * An Sequencer manages a unit of work that must maintain state across a number of events. A
- * sequence succeeds or fails as a single unit, represented by a blocking call to {@link #call()}.
+ * A Sequencer manages a unit of work that must maintain state across a number of events. A sequence
+ * succeeds or fails as a single unit, represented by a blocking call to {@link #call()}.
  * <p>
  * This class might also be named {@code Activity}, {@code Behavior}, or {@code Controller}, were
  * these names not excessively generic.
@@ -149,11 +149,11 @@ public abstract class Sequencer<T> implements Callable<T> {
     this.dispatch = dispatch;
   }
 
-  protected final void fail(String message) {
+  protected void fail(String message) {
     fail(message, null);
   }
 
-  protected final void fail(String message, Throwable cause) {
+  protected void fail(String message, Throwable cause) {
     executingLock.lock();
     checkExecuting();
     isExecuting = false;
@@ -163,7 +163,7 @@ public abstract class Sequencer<T> implements Callable<T> {
     executingLock.unlock();
   }
 
-  protected final void finish(T toReturn) {
+  protected void finish(T toReturn) {
     executingLock.lock();
     checkExecuting();
     isExecuting = false;

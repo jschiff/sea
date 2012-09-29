@@ -1,5 +1,4 @@
 package com.getperka.sea.decoration;
-
 /*
  * #%L
  * Simple Event Architecture
@@ -20,16 +19,31 @@ package com.getperka.sea.decoration;
  * #L%
  */
 
-import java.util.Set;
-
-import com.getperka.sea.Event;
 
 /**
- * An event type that can be filtered by receiver based on runtime tags.
+ * A base class that can be used when implementing {@link OutcomeEvent}.
  */
-public interface TaggedEvent extends Event {
-  /**
-   * Returns a set containing the event's tags. The returned set may be immutable.
-   */
-  Set<Tag> getTags();
+public class BaseOutcomeEvent extends BaseTaggedEvent implements OutcomeEvent {
+  private Throwable failure;
+  private boolean success;
+
+  @Override
+  public Throwable getFailure() {
+    return failure;
+  }
+
+  @Override
+  public boolean isSuccess() {
+    return success;
+  }
+
+  @Override
+  public void setFailure(Throwable failure) {
+    this.failure = failure;
+  }
+
+  @Override
+  public void setSuccess(boolean success) {
+    this.success = success;
+  }
 }

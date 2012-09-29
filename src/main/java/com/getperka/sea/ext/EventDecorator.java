@@ -35,14 +35,6 @@ import com.getperka.sea.Receiver;
  * 
  * <pre>
  * public class MyEventDecorator&lt;MyBinding, MyEvent&gt; {
- *   public Class&lt;? extends MyBinding&gt; getAnnotationType() {
- *     return MyBinding.class;
- *   }
- * 
- *   public Class&lt;? extends MyEvent&gt; getEventType() {
- *     return MyEvent.class;
- *   }
- * 
  *   public Callable&lt;Object&gt; wrap(final Context ctx) {
  *     return new Callable&lt;Object&gt;() {
  *       public Object call() throws Exception {

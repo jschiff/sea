@@ -43,9 +43,9 @@ import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.EventDispatchers;
 import com.getperka.sea.Receiver;
-import com.getperka.sea.decoration.OutcomeEvent;
-import com.getperka.sea.decoration.OutcomeEvent.Implementation;
-import com.getperka.sea.decoration.OutcomeEvent.Success;
+import com.getperka.sea.decoration.BaseOutcomeEvent;
+import com.getperka.sea.decoration.Implementation;
+import com.getperka.sea.decoration.Success;
 import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.EventDecoratorBinding;
 
@@ -81,7 +81,7 @@ public class OrderTest {
     }
   }
 
-  static class MyEvent extends OutcomeEvent.Base {
+  static class MyEvent extends BaseOutcomeEvent {
     final int value;
 
     MyEvent(int value) {

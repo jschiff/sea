@@ -1,5 +1,4 @@
 package com.getperka.sea.decoration;
-
 /*
  * #%L
  * Simple Event Architecture
@@ -20,16 +19,25 @@ package com.getperka.sea.decoration;
  * #L%
  */
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 
-import com.getperka.sea.Event;
-
 /**
- * An event type that can be filtered by receiver based on runtime tags.
+ * A base implementation of {@link TaggedEvent}.
  */
-public interface TaggedEvent extends Event {
+public class BaseTaggedEvent implements TaggedEvent {
+  private final Set<Tag> tags = Collections.synchronizedSet(new HashSet<Tag>());
+
   /**
-   * Returns a set containing the event's tags. The returned set may be immutable.
+   * A convenience method for adding a tag to the event.
    */
-  Set<Tag> getTags();
+  public void addTag(Tag tag) {
+    tags.add(tag);
+  }
+
+  @Override
+  public Set<Tag> getTags() {
+    return tags;
+  }
 }

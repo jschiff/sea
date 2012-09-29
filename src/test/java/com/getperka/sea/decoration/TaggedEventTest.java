@@ -30,12 +30,9 @@ import org.junit.Test;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.EventDispatchers;
 import com.getperka.sea.Receiver;
-import com.getperka.sea.decoration.TaggedEvent.Tag;
-import com.getperka.sea.decoration.TaggedEvent.TagMode;
-import com.getperka.sea.decoration.TaggedEvent.Tagged;
 
 public class TaggedEventTest {
-  static class MyEvent extends TaggedEvent.Base {}
+  static class MyEvent extends BaseTaggedEvent {}
 
   class MyReceiver {
     boolean all;
