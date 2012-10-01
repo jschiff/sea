@@ -2,6 +2,25 @@
 
 The Simple Event Architecture makes possible to write a highly-concurrent, event-based application or component with a minimum of friction.
 
+- [Simple Event Architecture](#simple-event-architecture)
+ - [Background](#background)
+ - [Design](#design)
+  - [Events](#events)
+  - [Event Receivers](#event-receivers)
+  - [Event Dispatch](#event-dispatch)
+  - [Event Decoration](#event-decoration)
+ - [Provided Services](#provided-services)
+  - [Logging](#logging)
+  - [Tagging](#tagging)
+   - [Literal Tags](#literal-tags)
+   - [Instance Tags](#instance-tags)
+   - [Timed Events](#timed-events)
+   - [Outcome Events](#outcome-events)
+  - [Ordered Events](#ordered-events)
+  - [Sequencers](#sequencers)
+   - [Event-Dispatched Sequencers](#event-dispatched-sequencers)
+ - [Guice](#guice)
+
 The Maven coordinates for SEA are:
 ```xml
 <dependency>
