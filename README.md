@@ -66,7 +66,7 @@ There are several flavors of the `register()` method:
 * `register(Object obj)`
   * This method is shorthand for `register(Class, Provider)`, reusing the provided instance.
 
-When an event is fired, each registered `@Receiver` method whose erased `Event` parameter is assignable from the dispatched event`s class will be invoked. The invocations occur concurrently from a set of pooled threads as soon as possible.  By default, no synchronization or ordering on event dispatch is performed.
+When an event is fired, each registered `@Receiver` method whose erased `Event` parameter is assignable from the dispatched event's class will be invoked. The invocations occur concurrently from a set of pooled threads as soon as possible.  By default, no synchronization or ordering on event dispatch is performed.
 
 ### Event Decoration
 
@@ -370,7 +370,11 @@ class Example {
 }
 ```
 
-It is important to note that the `call()` method is not reentrant.  If multiple threads attempt to call the same `Sequencer`, the invocations will stack up, one behind the other.  This behavior is necessary because the termination methods, `finish()` and `fail()` will likely be called from an event receiver thread and not directly from `start`.  If the termination methods are not called, the `call()` method will never return.  In order to prevent the accumulation of dead threads, it is suggested that `Sequencers` are called from an `@Timed(stop = true)` event receiver.  For example:
+It is important to note that the `call()` method is not reentrant.  If multiple threads attempt to call the same instance of a `Sequencer`, the invocations will stack up, one behind the other.  This behavior is necessary because the termination methods, `finish()` and `fail()` will likely be called from an event receiver thread and not directly from `start()`.  If the termination methods are not called, the `call()` method will never return.  In order to prevent the accumulation of dead threads, it is suggested that `Sequencers` are called from an `@Timed(stop = true)` event receiver.
+
+### Event-Dispatched Sequencers
+
+The use of event-dispatched sequences allows composite `Sequencers` to be built that can use `@Success` and `@Failure` pairs to robustly handle partial success and failures of their component sequences. For example:
 
 ```java
 class LoadABunchOfResourcesEvent extends BaseOutcomeEvent {
@@ -381,7 +385,7 @@ class LoadABunchOfResourcesEvent extends BaseOutcomeEvent {
 class ResourceLoader {
   @Receiver
   @Implementation
-  @Timed(value = 5, unit = TimeUnit.MINUTES, stop = true)`
+  @Timed(value = 5, unit = TimeUnit.MINUTES, stop = true)
   void load(LoadABunchOfResourcesEvent evt) {
     LoadResourcesSequencer seq = new LoadResourcesSequencer();
     seq.setEventDispatch(eventDispatch);
@@ -392,8 +396,6 @@ class ResourceLoader {
 
 // Elsewhere an @Success and @Failure pair exist to call the multiple-load event
 ```
-
-The use of event-dispatched sequences allows composite `Sequencers` to be built that can use `@Success` and `@Failure` pairs to robustly handle partial success and failures of their component sequences.
 
 ## Guice
 
