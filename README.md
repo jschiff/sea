@@ -14,11 +14,11 @@ The Simple Event Architecture makes possible to write a highly-concurrent, event
   - [Tagging](#tagging)
    - [Literal Tags](#literal-tags)
    - [Instance Tags](#instance-tags)
-   - [Timed Events](#timed-events)
-   - [Outcome Events](#outcome-events)
-  - [Ordered Events](#ordered-events)
-  - [Sequencers](#sequencers)
-   - [Event-Dispatched Sequencers](#event-dispatched-sequencers)
+  - [Timed Events](#timed-events)
+  - [Outcome Events](#outcome-events)
+ - [Ordered Events](#ordered-events)
+ - [Sequencers](#sequencers)
+  - [Event-Dispatched Sequencers](#event-dispatched-sequencers)
  - [Guice](#guice)
 
 The Maven coordinates for SEA are:
