@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.getperka.sea</groupId>
   <artifactId>sea</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.1-SNAPSHOT</version>
   <name>Simple Event Architecture</name>
   <description>An event-dispatch mechanism</description>
   <url>https://github.com/perka/sea</url>
@@ -17,7 +17,7 @@
     <url>https://github.com/perka/sea</url>
     <connection>scm:git:git@github.com:perka/sea.git</connection>
     <developerConnection>scm:git:git@github.com:perka/sea.git</developerConnection>
-    <tag>sea-0.1.0</tag>
+    <tag>HEAD</tag>
   </scm>
   <developers>
     <developer>
