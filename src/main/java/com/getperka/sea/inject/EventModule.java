@@ -61,8 +61,6 @@ public class EventModule extends PrivateModule {
     }
   }
 
-  private final int numThreads = Integer.getInteger("EventModule.numThreads", 128);
-
   @Override
   protected void configure() {
     EventScope eventScope = new EventScope();
@@ -85,9 +83,10 @@ public class EventModule extends PrivateModule {
     bind(EventDispatch.class).to(DispatchImpl.class);
     expose(EventDispatch.class);
 
-    // Create a reasonably-sized pool
-    bind(ExecutorService.class).toInstance(
-        Executors.newFixedThreadPool(numThreads, new MyFactory()));
+    // Choose a reasonable default for the thread pool
+    bind(ExecutorService.class)
+        .annotatedWith(EventExecutor.class)
+        .toInstance(Executors.newCachedThreadPool(new MyFactory()));
 
     bind(new TypeLiteral<Collection<AnnotatedElement>>() {})
         .annotatedWith(GlobalDecorators.class)
