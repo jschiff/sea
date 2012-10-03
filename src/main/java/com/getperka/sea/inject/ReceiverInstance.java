@@ -30,14 +30,21 @@ import com.google.inject.BindingAnnotation;
 /**
  * A binding annotation for a {@link Object} in an {@link DecoratorScope} to provide the instance
  * that the receiving method will be invoked upon. If the receiver method is static, the value
- * {@link #STATIC_INVOCATION} will be injected, since injecting {@code null} value is poor form.
+ * {@link StaticInvocation#INSTANCE} will be injected, since injecting {@code null} value is poor
+ * form.
  */
 @BindingAnnotation
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.TYPE, ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER })
 public @interface ReceiverInstance {
-  /**
-   * Indicates that the receiver method is static.
+  /*
+   * The field is in an inner static class because placing non-constant final fields in an
+   * annotation type triggers javac bug 6857918.
    */
-  public static final Object STATIC_INVOCATION = new Object();
+  public static class StaticInvocation {
+    /**
+     * Indicates that the receiver method is static.
+     */
+    public static final Object INSTANCE = new Object();
+  }
 }

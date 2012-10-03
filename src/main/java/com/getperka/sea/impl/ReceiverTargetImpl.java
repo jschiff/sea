@@ -69,7 +69,8 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
       instance = instanceProvider == null ? null : instanceProvider.get();
       decoratorScope
           .withWasDispatched(wasDispatched)
-          .withReceiverInstance(instance == null ? ReceiverInstance.STATIC_INVOCATION : instance)
+          .withReceiverInstance(
+              instance == null ? ReceiverInstance.StaticInvocation.INSTANCE : instance)
           .withWasThrown(wasThrown);
     }
 
