@@ -41,6 +41,7 @@ import javax.inject.Provider;
 import org.slf4j.Logger;
 
 import com.getperka.sea.Event;
+import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.EventDecoratorBinding;
 import com.getperka.sea.inject.DecoratorScope;
@@ -60,6 +61,7 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
   private class Work implements Callable<Object> {
     // These two variable are temporary state for the actual dispatch
     private final AtomicBoolean wasDispatched = new AtomicBoolean();
+    private final AtomicReference<Object> wasReturned = new AtomicReference<Object>();
     private final AtomicReference<Throwable> wasThrown = new AtomicReference<Throwable>();
     private final Event event;
     private final Object instance;
@@ -68,16 +70,19 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
       this.event = event;
       instance = instanceProvider == null ? null : instanceProvider.get();
       decoratorScope
-          .withWasDispatched(wasDispatched)
           .withReceiverInstance(
               instance == null ? ReceiverInstance.StaticInvocation.INSTANCE : instance)
+          .withWasDispatched(wasDispatched)
+          .withWasReturned(wasReturned)
           .withWasThrown(wasThrown);
     }
 
     @Override
     public Object call() throws IllegalArgumentException, IllegalAccessException {
       try {
-        return method.invoke(instance, event);
+        Object value = method.invoke(instance, event);
+        wasReturned.set(value);
+        return value;
       } catch (InvocationTargetException e) {
         // Clean up the stack trace
         Throwable cause = e.getCause();
@@ -134,11 +139,12 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
    * Set via {@link #setInstanceDispatch} or {@link #setStaticDispatch}.
    */
   private Method method;
+  private Provider<DispatchResult> results;
 
   protected ReceiverTargetImpl() {}
 
   @Override
-  public Object dispatch(final Event event) throws Exception {
+  public DispatchResult dispatch(Event event) {
     eventScope.enter(event);
     decoratorScope
         .withEvent(event)
@@ -169,7 +175,15 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
         }
       }
 
-      return toInvoke == null ? null : toInvoke.call();
+      if (toInvoke != null) {
+        try {
+          toInvoke.call();
+        } catch (Exception e) {
+          logger.error("Unhandled exception while dispatching event", e);
+        }
+      }
+
+      return results.get();
     } finally {
       decoratorScope.exit();
       eventScope.exit();
@@ -247,13 +261,15 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
       EventScope eventScope,
       @GlobalDecorators Collection<AnnotatedElement> globalDecorators,
       Injector injector,
-      @EventLogger Logger logger) {
+      @EventLogger Logger logger,
+      Provider<DispatchResult> results) {
     this.decoratorContexts = decoratorContexts;
     this.decoratorScope = decoratorScope;
     this.eventScope = eventScope;
     this.globalDecorators = globalDecorators;
     this.injector = injector;
     this.logger = logger;
+    this.results = results;
   }
 
   private void computeDecorators() {

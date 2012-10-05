@@ -35,12 +35,14 @@ import org.junit.Test;
  */
 public class LifecycleTest {
 
+  static class MyEvent implements Event {}
+
   static class MyReceiver {
     /**
      * Static methods should not trigger instantiation.
      */
     @Receiver
-    public static void staticReceiver(Event event) {
+    public static void staticReceiver(MyEvent event) {
       latch.countDown();
     }
 
@@ -49,7 +51,7 @@ public class LifecycleTest {
     }
 
     @Receiver
-    public void receive(Event event) {
+    public void receive(MyEvent event) {
       latch.countDown();
     }
   }
@@ -60,7 +62,7 @@ public class LifecycleTest {
      * Static methods should not trigger instantiation.
      */
     @Receiver
-    public static void staticReceiver(Event event) {
+    public static void staticReceiver(MyEvent event) {
       latch.countDown();
     }
 
@@ -69,7 +71,7 @@ public class LifecycleTest {
     }
 
     @Receiver
-    public void receive(Event event) {
+    public void receive(MyEvent event) {
       latch.countDown();
     }
   }
@@ -92,7 +94,7 @@ public class LifecycleTest {
     dispatch.register(MyReceiver.class);
 
     for (int i = 0; i < 10; i++) {
-      dispatch.fire(new Event() {});
+      dispatch.fire(new MyEvent());
     }
 
     latch.await();
@@ -109,7 +111,7 @@ public class LifecycleTest {
     dispatch.register(new MyReceiver());
 
     for (int i = 0; i < 10; i++) {
-      dispatch.fire(new Event() {});
+      dispatch.fire(new MyEvent());
     }
 
     latch.await();
@@ -126,7 +128,7 @@ public class LifecycleTest {
     dispatch.register(MySingletonReceiver.class);
 
     for (int i = 0; i < 10; i++) {
-      dispatch.fire(new Event() {});
+      dispatch.fire(new MyEvent());
     }
 
     latch.await();

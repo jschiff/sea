@@ -37,12 +37,15 @@ import org.slf4j.LoggerFactory;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
+import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.impl.DecoratorContext;
 import com.getperka.sea.impl.DispatchImpl;
 import com.getperka.sea.impl.DispatchMap;
+import com.getperka.sea.impl.DispatchResultImpl;
 import com.getperka.sea.impl.Invocation;
+import com.getperka.sea.impl.InvocationProvider;
 import com.getperka.sea.impl.ReceiverTargetImpl;
 import com.getperka.sea.impl.SettableReceiverTarget;
 import com.getperka.sea.impl.SettableRegistration;
@@ -73,6 +76,8 @@ public class EventModule extends PrivateModule {
         .to(DecoratorContext.class);
 
     bind(DispatchMap.class).asEagerSingleton();
+
+    bind(DispatchResult.class).to(DispatchResultImpl.class);
 
     bind(Event.class)
         .annotatedWith(CurrentEvent.class)
@@ -116,6 +121,11 @@ public class EventModule extends PrivateModule {
     bind(AtomicBoolean.class)
         .annotatedWith(WasDispatched.class)
         .toProvider(decoratorScope.<AtomicBoolean> provider())
+        .in(decoratorScope);
+
+    bind(new TypeLiteral<AtomicReference<Object>>() {})
+        .annotatedWith(WasReturned.class)
+        .toProvider(decoratorScope.<AtomicReference<Object>> provider())
         .in(decoratorScope);
 
     bind(new TypeLiteral<AtomicReference<Throwable>>() {})

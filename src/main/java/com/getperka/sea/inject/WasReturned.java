@@ -1,5 +1,4 @@
-package com.getperka.sea.impl;
-
+package com.getperka.sea.inject;
 /*
  * #%L
  * Simple Event Architecture
@@ -20,17 +19,18 @@ package com.getperka.sea.impl;
  * #L%
  */
 
-import java.lang.reflect.Method;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import javax.inject.Provider;
-
-import com.getperka.sea.ext.ReceiverTarget;
+import com.google.inject.BindingAnnotation;
 
 /**
- * A {@link ReceiverTarget} that can be (re-)set.
+ * A binding annotation for an {@code AtomicReference<Object>} in an {@link DecoratorScope} to
+ * provide the value returned from the decorated event dispatch callable chain.
  */
-public interface SettableReceiverTarget extends ReceiverTarget {
-  void setInstanceDispatch(Provider<? extends Object> provider, Method method);
-
-  void setStaticDispatch(Method method);
-}
+@BindingAnnotation
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ ElementType.TYPE, ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER })
+public @interface WasReturned {}

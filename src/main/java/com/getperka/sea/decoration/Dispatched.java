@@ -1,5 +1,4 @@
 package com.getperka.sea.decoration;
-
 /*
  * #%L
  * Simple Event Architecture
@@ -20,45 +19,36 @@ package com.getperka.sea.decoration;
  * #L%
  */
 
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
+import com.getperka.sea.Event;
+import com.getperka.sea.ext.DispatchCompleteEvent;
 import com.getperka.sea.ext.EventDecoratorBinding;
 
 /**
- * Triggers a log message (via {@code SLF4J}) whenever the decorated event receiver method is
- * invoked or if the receiver method throws an exception. By default, a debug-level messages will be
- * logged.
- * <p>
- * This annotation is especially useful to apply to unit-test receivers that enforce assertions.
+ * Used to filter {@link DispatchCompleteEvent} instances.
  */
-@EventDecoratorBinding(LoggingDecorator.class)
+@Documented
+@EventDecoratorBinding(DispatchedFilter.class)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Logged {
+@Target({ ElementType.METHOD, ElementType.PACKAGE, ElementType.TYPE })
+public @interface Dispatched {
   /**
-   * Maps to SLF4J log levels.
+   * Filters DispatchCompleteEvent by their source event type.
    */
-  public enum Level {
-    OFF,
-    DEBUG,
-    INFO,
-    WARN,
-    ERROR;
-  }
+  Class<? extends Event> eventType() default Event.class;
 
   /**
-   * Logs any exceptions thrown by the receiver method at this level. Defaults to
-   * {@link Level#DEBUG}.
+   * If {@code true}, filters out events that were not received by any receiver method.
    */
-  Level exceptionLevel() default Level.DEBUG;
+  boolean onlyReceived() default false;
 
   /**
-   * The log level for the string message. Defaults to {@link Level#DEBUG}.
+   * If {@code true}, filters out events that were received by at least one receiver method.
    */
-  Level level() default Level.DEBUG;
-
-  /**
-   * An optional message to be logged before the event is dispatched to the receiver.
-   */
-  String value() default "";
+  boolean onlyUnreceived() default false;
 }

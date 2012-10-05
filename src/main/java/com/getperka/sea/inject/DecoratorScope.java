@@ -40,6 +40,7 @@ public class DecoratorScope extends BaseScope {
   private final ThreadLocal<Object> receiverInstance = new ThreadLocal<Object>();
   private final ThreadLocal<ReceiverTarget> target = new ThreadLocal<ReceiverTarget>();
   private final ThreadLocal<AtomicBoolean> wasDispatched = new ThreadLocal<AtomicBoolean>();
+  private final ThreadLocal<AtomicReference<Object>> wasReturned = new ThreadLocal<AtomicReference<Object>>();
   private final ThreadLocal<AtomicReference<Throwable>> wasThrown = new ThreadLocal<AtomicReference<Throwable>>();
   private final ThreadLocal<Callable<Object>> work = new ThreadLocal<Callable<Object>>();
   private final Map<Key<?>, ThreadLocal<?>> map = new HashMap<Key<?>, ThreadLocal<?>>();
@@ -47,6 +48,7 @@ public class DecoratorScope extends BaseScope {
   DecoratorScope() {
     map.put(Key.get(Annotation.class), annotation);
     map.put(Key.get(AtomicBoolean.class, WasDispatched.class), wasDispatched);
+    map.put(Key.get(new TypeLiteral<AtomicReference<Object>>() {}, WasReturned.class), wasReturned);
     map.put(Key.get(new TypeLiteral<AtomicReference<Throwable>>() {}, WasThrown.class), wasThrown);
     map.put(Key.get(Event.class), event);
     map.put(Key.get(Object.class, ReceiverInstance.class), receiverInstance);
@@ -91,6 +93,11 @@ public class DecoratorScope extends BaseScope {
 
   public DecoratorScope withWasDispatched(AtomicBoolean wasDispatched) {
     this.wasDispatched.set(wasDispatched);
+    return this;
+  }
+
+  public DecoratorScope withWasReturned(AtomicReference<Object> wasReturned) {
+    this.wasReturned.set(wasReturned);
     return this;
   }
 

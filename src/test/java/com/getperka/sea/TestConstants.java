@@ -1,4 +1,5 @@
 package com.getperka.sea;
+
 /*
  * #%L
  * Simple Event Architecture

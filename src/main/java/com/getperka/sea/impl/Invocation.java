@@ -20,16 +20,20 @@ package com.getperka.sea.impl;
  * #L%
  */
 
+import java.util.ArrayList;
+import java.util.Queue;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.inject.Inject;
 
-import org.slf4j.Logger;
-
 import com.getperka.sea.Event;
+import com.getperka.sea.EventDispatch;
+import com.getperka.sea.ext.DispatchCompleteEvent;
+import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.CurrentEvent;
-import com.getperka.sea.inject.EventLogger;
 import com.getperka.sea.inject.EventScoped;
 
 /**
@@ -38,28 +42,57 @@ import com.getperka.sea.inject.EventScoped;
  * within the decorator / dispatch plumbing.
  */
 @EventScoped
-public class Invocation implements Callable<Object> {
+public class Invocation implements Callable<DispatchResult> {
+  /**
+   * State that is shared between Invocation instances to provide a global view of an event's
+   * dispatch metadata.
+   */
+  static class State {
+    private final AtomicInteger invocationsRemaining;
+    private final Queue<DispatchResult> results = new ConcurrentLinkedQueue<DispatchResult>();
+
+    public State(int invocationsRemaining) {
+      this.invocationsRemaining = new AtomicInteger(invocationsRemaining);
+    }
+
+    public Queue<DispatchResult> getResults() {
+      return results;
+    }
+
+    public boolean isLastInvocation(DispatchResult result) {
+      if (result != null) {
+        results.add(result);
+      }
+      return invocationsRemaining.decrementAndGet() == 0;
+    }
+  }
+
+  private EventDispatch dispatch;
   private Event event;
   private ReceiverTarget target;
-  private Logger logger;
+  private State state;
 
   protected Invocation() {}
 
   @Override
-  public Object call() {
+  public DispatchResult call() {
+    DispatchResult toReturn = null;
     Thread.currentThread().setName(toString());
     try {
-      return target.dispatch(event);
-    } catch (Exception e) {
-      logger.error("Unhandled exception during event dispatch", e);
-      return null;
+      toReturn = target.dispatch(event);
     } finally {
+      maybeDispatchCompleteEvent(toReturn);
       Thread.currentThread().setName("idle");
     }
+    return toReturn;
   }
 
   public void setInvocation(ReceiverTarget target) {
     this.target = target;
+  }
+
+  public void setState(State state) {
+    this.state = state;
   }
 
   /**
@@ -71,8 +104,17 @@ public class Invocation implements Callable<Object> {
   }
 
   @Inject
-  void inject(@CurrentEvent Event event, @EventLogger Logger logger) {
+  void inject(EventDispatch dispatch, @CurrentEvent Event event) {
+    this.dispatch = dispatch;
     this.event = event;
-    this.logger = logger;
+  }
+
+  private void maybeDispatchCompleteEvent(DispatchResult toReturn) {
+    if (state.isLastInvocation(toReturn) && !(event instanceof DispatchCompleteEvent)) {
+      DispatchCompleteEvent complete = new DispatchCompleteEvent();
+      complete.setSource(event);
+      complete.setResults(new ArrayList<DispatchResult>(state.getResults()));
+      dispatch.fire(complete);
+    }
   }
 }

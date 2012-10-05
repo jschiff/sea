@@ -42,16 +42,51 @@ class LoggingDecorator implements EventDecorator<Logged, Event> {
         Logged annotation = ctx.getAnnotation();
         Event event = ctx.getEvent();
         Logger logger = LoggerFactory.getLogger(event.getClass());
-        if (!annotation.error().isEmpty()) {
-          logger.error(annotation.error());
-        } else if (!annotation.warn().isEmpty()) {
-          logger.warn(annotation.warn());
-        } else if (!annotation.info().isEmpty()) {
-          logger.info(annotation.info());
-        } else {
-          logger.debug("Dispatching event");
+
+        // Pre-dispatch message
+        if (!annotation.value().isEmpty()) {
+          switch (annotation.level()) {
+            case OFF:
+              break;
+            case DEBUG:
+              logger.debug(annotation.value());
+              break;
+            case INFO:
+              logger.info(annotation.value());
+              break;
+            case WARN:
+              logger.warn(annotation.value());
+              break;
+            case ERROR:
+              logger.error(annotation.value());
+              break;
+          }
         }
-        return ctx.getWork().call();
+
+        try {
+          return ctx.getWork().call();
+        } finally {
+          // Log any throwable
+          Throwable thrown = ctx.wasThrown();
+          if (thrown != null) {
+            switch (annotation.exceptionLevel()) {
+              case OFF:
+                break;
+              case DEBUG:
+                logger.debug("An exception was thrown by the event receiver", thrown);
+                break;
+              case INFO:
+                logger.info("An exception was thrown by the event receiver", thrown);
+                break;
+              case WARN:
+                logger.warn("An exception was thrown by the event receiver", thrown);
+                break;
+              case ERROR:
+                logger.error("An exception was thrown by the event receiver", thrown);
+                break;
+            }
+          }
+        }
       }
     };
   }

@@ -39,7 +39,7 @@ public interface ReceiverTarget {
    * @return the value returned by the {@link Receiver} method, or replaced by an interveining
    *         {@link EventDecorator}
    */
-  Object dispatch(Event event) throws Exception;
+  DispatchResult dispatch(Event event);
 
   /**
    * For debugging use only. Returns the signature of the method that the ReceiverTarget will

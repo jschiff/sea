@@ -1,4 +1,4 @@
-package com.getperka.sea.inject;
+package com.getperka.sea.impl;
 
 /*
  * #%L
@@ -25,10 +25,15 @@ import java.util.List;
 
 import javax.inject.Inject;
 
+import org.slf4j.Logger;
+
 import com.getperka.sea.Event;
+import com.getperka.sea.EventDispatch;
+import com.getperka.sea.ext.DispatchCompleteEvent;
 import com.getperka.sea.ext.ReceiverTarget;
-import com.getperka.sea.impl.DispatchMap;
-import com.getperka.sea.impl.Invocation;
+import com.getperka.sea.inject.CurrentEvent;
+import com.getperka.sea.inject.EventLogger;
+import com.getperka.sea.inject.EventScoped;
 import com.google.inject.Provider;
 
 /**
@@ -36,29 +41,48 @@ import com.google.inject.Provider;
  * {@link CurrentEvent}.
  */
 @EventScoped
-class InvocationProvider implements Provider<List<Invocation>> {
+public class InvocationProvider implements Provider<List<Invocation>> {
 
+  private final EventDispatch dispatch;
   private final Event event;
   private final Provider<Invocation> invocations;
+  private final Logger logger;
   private final DispatchMap map;
 
   @Inject
-  InvocationProvider(@CurrentEvent Event event, Provider<Invocation> invocations,
-      DispatchMap map) {
+  InvocationProvider(EventDispatch dispatch, @CurrentEvent Event event,
+      Provider<Invocation> invocations,
+      @EventLogger Logger logger, DispatchMap map) {
+    this.dispatch = dispatch;
     this.event = event;
     this.invocations = invocations;
+    this.logger = logger;
     this.map = map;
   }
 
   @Override
   public List<Invocation> get() {
     Class<? extends Event> eventClass = event.getClass();
+    List<ReceiverTarget> targets = map.getTargets(eventClass);
     List<Invocation> toReturn = new ArrayList<Invocation>();
 
-    List<ReceiverTarget> targets = map.getTargets(eventClass);
+    // Fire an empty DispatchComplete if there are no receivers
+    if (targets.isEmpty() && !(event instanceof DispatchCompleteEvent)) {
+      logger.debug("No @Receiver methods that accept {} have been registered",
+          eventClass.getName());
+
+      DispatchCompleteEvent complete = new DispatchCompleteEvent();
+      complete.setSource(event);
+      dispatch.fire(complete);
+      return toReturn;
+    }
+
+    Invocation.State state = new Invocation.State(targets.size());
+
     for (ReceiverTarget target : targets) {
       Invocation invocation = invocations.get();
       invocation.setInvocation(target);
+      invocation.setState(state);
       toReturn.add(invocation);
     }
 

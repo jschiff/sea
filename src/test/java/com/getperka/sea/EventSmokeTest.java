@@ -44,6 +44,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.getperka.sea.decoration.Logged;
+import com.getperka.sea.decoration.Logged.Level;
 import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.EventDecoratorBinding;
 
@@ -51,7 +52,7 @@ import com.getperka.sea.ext.EventDecoratorBinding;
 public class EventSmokeTest {
 
   static class BuggyReceiver {
-    @Logged(info = "The following exception is expected")
+    @Logged(level = Level.INFO, value = "The following exception is expected")
     @Receiver
     void receive(Event e) {
       throw new RuntimeException("Should not prevent work from succeeding");

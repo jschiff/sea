@@ -16,6 +16,8 @@ The Simple Event Architecture makes possible to write a highly-concurrent, event
    - [Instance Tags](#instance-tags)
   - [Timed Events](#timed-events)
   - [Outcome Events](#outcome-events)
+ - [Meta Events](#meta-events)
+  - [Dispatch Completed](#dispatch-completed)
  - [Ordered Events](#ordered-events)
  - [Sequencers](#sequencers)
   - [Event-Dispatched Sequencers](#event-dispatched-sequencers)
@@ -271,6 +273,23 @@ class Implementor {
 ```
 
 The `@Implementation` filter checks the incoming `OutcomeEvent` to see if its `isSuccess()` or `getFailure()` are `false` and `null` respectively.  If the event has not yet been processed, it is passed on the receiver method.  One the receiver method returns or throws an exception, the event is updated accordingly and automatically re-fired.  Conversely, the `@Success` and `@Failure` filters only allow an `OutcomeEvent` through if the `isSuccess` or `getFailure` is `true` or non-`null`.
+
+## Meta Events
+
+### Dispatch Completed
+
+A `DispatchCompleteEvent` is automatically fired once an event has been dispatched to all of its potential receiver methods.  This event type contains a reference to the source event as well as a collection of `DispatchResult` objects which provide information of the disposition of each receiver. This information includes a flag to indicate whether or not the receiver method was actually invoked, the value returned from the receiver method, and any exception thrown by the receiver method.
+
+The `@Dispatched` decorator can be applied to a `DispatchCompleteEvent` receiver to filter by source event type and whether or not the event resulted in the invocation of any receiver methods.  This allows a fallback receiver methods to be built for an event:
+
+```java
+@Dispatched(eventType = MyEvent.class, onlyUnreceived = true)
+@Receiver
+void fallbackForMyEvent(DispatchCompleteEvent evt) {
+  MyEvent myEvent = (MyEvent) evt.getSource();
+  // Perform some default behavior, perhaps emitting a warning message, etc.
+}
+```
 
 ## Ordered Events
 
