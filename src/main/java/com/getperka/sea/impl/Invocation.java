@@ -28,12 +28,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.inject.Inject;
 
+import org.slf4j.Logger;
+
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.ext.DispatchCompleteEvent;
 import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.CurrentEvent;
+import com.getperka.sea.inject.EventLogger;
 import com.getperka.sea.inject.EventScoped;
 
 /**
@@ -69,6 +72,7 @@ public class Invocation implements Callable<DispatchResult> {
 
   private EventDispatch dispatch;
   private Event event;
+  private Logger logger;
   private ReceiverTarget target;
   private State state;
 
@@ -76,10 +80,13 @@ public class Invocation implements Callable<DispatchResult> {
 
   @Override
   public DispatchResult call() {
+    logger.trace("Invocation starting: {}", this);
     DispatchResult toReturn = null;
     Thread.currentThread().setName(toString());
     try {
       toReturn = target.dispatch(event);
+    } catch (Throwable t) {
+      logger.error("Unable to dispatch event", t);
     } finally {
       maybeDispatchCompleteEvent(toReturn);
       Thread.currentThread().setName("idle");
@@ -104,9 +111,10 @@ public class Invocation implements Callable<DispatchResult> {
   }
 
   @Inject
-  void inject(EventDispatch dispatch, @CurrentEvent Event event) {
+  void inject(EventDispatch dispatch, @CurrentEvent Event event, @EventLogger Logger logger) {
     this.dispatch = dispatch;
     this.event = event;
+    this.logger = logger;
   }
 
   private void maybeDispatchCompleteEvent(DispatchResult toReturn) {
