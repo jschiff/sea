@@ -1,0 +1,69 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>sea-jms</artifactId>
+  <name>Simple Event Architecture - JMS Support</name>
+  <scm>
+    <url>https://github.com/perka/sea</url>
+    <connection>scm:git:git@github.com:perka/sea.git</connection>
+    <developerConnection>scm:git:git@github.com:perka/sea.git</developerConnection>
+    <tag>HEAD</tag>
+  </scm>
+
+  <parent>
+    <groupId>com.getperka.sea</groupId>
+    <artifactId>sea-parent</artifactId>
+    <version>0.1.1-SNAPSHOT</version>
+  </parent>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.getperka.sea</groupId>
+      <artifactId>sea</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.inject</groupId>
+      <artifactId>guice</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>javax.inject</groupId>
+      <artifactId>javax.inject</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.geronimo.specs</groupId>
+      <artifactId>geronimo-jms_1.1_spec</artifactId>
+      <version>1.1</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- TEST dependencies -->
+    <!-- <dependency> <groupId>org.fusesource.stompjms</groupId> <artifactId>stompjms-client</artifactId> 
+      <version>1.13</version> <scope>test</scope> </dependency> -->
+
+    <dependency>
+      <groupId>org.apache.activemq</groupId>
+      <artifactId>activemq-core</artifactId>
+      <version>5.7.0</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- <dependency> <groupId>org.apache.activemq</groupId> <artifactId>apollo-broker</artifactId> 
+      <version>1.5</version> <scope>test</scope> </dependency> -->
+
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

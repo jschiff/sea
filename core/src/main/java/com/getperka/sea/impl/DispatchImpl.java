@@ -57,7 +57,7 @@ public class DispatchImpl implements EventDispatch, HasInjector {
 
   @Override
   public void fire(Event event) {
-    if (shutdown) {
+    if (shutdown || event == null) {
       return;
     }
     scope.enter(event);

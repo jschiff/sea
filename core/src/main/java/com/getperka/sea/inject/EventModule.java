@@ -104,6 +104,7 @@ public class EventModule extends PrivateModule {
     bind(Logger.class)
         .annotatedWith(EventLogger.class)
         .toInstance(LoggerFactory.getLogger(EventDispatch.class));
+    expose(Logger.class).annotatedWith(EventLogger.class);
 
     bind(SettableReceiverTarget.class).to(ReceiverTargetImpl.class);
     bind(SettableRegistration.class).to(SettableRegistrationImpl.class);
