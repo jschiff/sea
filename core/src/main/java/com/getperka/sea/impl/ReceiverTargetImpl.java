@@ -40,6 +40,7 @@ import javax.inject.Provider;
 
 import org.slf4j.Logger;
 
+import com.getperka.sea.CompositeEvent;
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.EventDecorator;
@@ -169,9 +170,29 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
             .getSupertype(EventDecorator.class)
             .getType();
         Type[] typeArgs = type.getActualTypeArguments();
-        if (TypeLiteral.get(typeArgs[0]).getRawType().isAssignableFrom(annotation.annotationType())
-          && TypeLiteral.get(typeArgs[1]).getRawType().isAssignableFrom(event.getClass())) {
-          toInvoke = eventDecorator.wrap(decoratorContexts.get());
+
+        // Does the decorator accept the annotation that we're currently looking at?
+        if (TypeLiteral.get(typeArgs[0]).getRawType().isAssignableFrom(annotation.annotationType())) {
+          Class<?> expectedEventType = TypeLiteral.get(typeArgs[1]).getRawType();
+          // Is the base event type assignable?
+          if (expectedEventType.isInstance(event)) {
+            toInvoke = eventDecorator.wrap(decoratorContexts.get());
+          } else if (event instanceof CompositeEvent) {
+            // If it's a composite event, are any of its facets assignable?
+            CompositeEvent composite = (CompositeEvent) event;
+            Collection<? extends Event> eventFacets = composite.getEventFacets();
+            if (eventFacets != null) {
+              for (Event facet : eventFacets) {
+                if (expectedEventType.isInstance(facet)) {
+                  // Swap the facet into the scope
+                  decoratorScope.withEvent(facet);
+                  toInvoke = eventDecorator.wrap(decoratorContexts.get());
+                  // Then restore the original event
+                  decoratorScope.withEvent(event);
+                }
+              }
+            }
+          }
         }
       }
 

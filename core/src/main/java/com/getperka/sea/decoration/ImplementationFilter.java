@@ -1,4 +1,5 @@
 package com.getperka.sea.decoration;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -60,7 +61,7 @@ class ImplementationFilter implements EventDecorator<Implementation, OutcomeEven
         } finally {
           // Optionally re-dispatch the event to trigger @Success / @Failure receivers
           if (ctx.wasDispatched() && ctx.getAnnotation().fireResult()) {
-            dispatch.fire(event);
+            dispatch.fire(ctx.getOriginalEvent());
           }
         }
       }

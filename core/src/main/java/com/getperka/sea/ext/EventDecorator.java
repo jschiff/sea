@@ -23,6 +23,7 @@ package com.getperka.sea.ext;
 import java.lang.annotation.Annotation;
 import java.util.concurrent.Callable;
 
+import com.getperka.sea.CompositeEvent;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.Receiver;
@@ -102,9 +103,16 @@ public interface EventDecorator<A extends Annotation, E extends Event> {
     A getAnnotation();
 
     /**
-     * The {@link Event} being dispatched.
+     * The {@link Event} (or facet of a {@link CompositeEvent}) being dispatched.
      */
     E getEvent();
+
+    /**
+     * Returns the {@link Event} that was passed to {@link EventDispatch#fire}. This is usually the
+     * same object as returned from {@link #getEvent()}, unless the original event is a
+     * {@link CompositeEvent}.
+     */
+    Event getOriginalEvent();
 
     /**
      * Returns the instance the {@link Receiver} method is being invoked upon. If the method being

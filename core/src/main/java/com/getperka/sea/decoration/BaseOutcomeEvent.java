@@ -1,4 +1,5 @@
 package com.getperka.sea.decoration;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -19,11 +20,10 @@ package com.getperka.sea.decoration;
  * #L%
  */
 
-
 /**
  * A base class that can be used when implementing {@link OutcomeEvent}.
  */
-public class BaseOutcomeEvent extends BaseTaggedEvent implements OutcomeEvent {
+public class BaseOutcomeEvent implements OutcomeEvent {
   private Throwable failure;
   private boolean success;
 

@@ -20,8 +20,7 @@ package com.getperka.sea.decoration;
  * #L%
  */
 
-
-
+import com.getperka.sea.Event;
 import com.getperka.sea.ext.EventDecorator;
 
 /**
@@ -66,7 +65,7 @@ import com.getperka.sea.ext.EventDecorator;
  * }
  * </pre>
  */
-public interface OutcomeEvent extends TaggedEvent {
+public interface OutcomeEvent extends Event {
   /**
    * Returns the exception thrown by the {@link Implementation} method that processed the event.
    */
