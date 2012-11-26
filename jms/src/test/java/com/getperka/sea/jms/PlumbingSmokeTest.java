@@ -21,7 +21,6 @@ package com.getperka.sea.jms;
  */
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
@@ -102,8 +101,10 @@ public class PlumbingSmokeTest extends JmsTestBase {
 
     // Now re-fire the event and make sure it's in the queue
     eventDispatch.fire(receiver.queueEvent);
-    assertNotNull(((ObjectMessage) testSession.createConsumer(queue).receive()).getObject());
-    assertEmpty(queue);
+    MessageConsumer consumer = testSession.createConsumer(queue);
+    assertNotNull(((ObjectMessage) consumer.receive()).getObject());
+    assertNull(consumer.receiveNoWait());
+    consumer.close();
   }
 
   @Test(timeout = TEST_TIMEOUT)
@@ -116,6 +117,7 @@ public class PlumbingSmokeTest extends JmsTestBase {
     MessageConsumer consumer = testSession.createConsumer(queue);
     Message m = consumer.receive();
     assertEquals(MyQueueEvent.class, ((ObjectMessage) m).getObject().getClass());
+    consumer.close();
   }
 
   @Test(timeout = TEST_TIMEOUT)
@@ -145,6 +147,7 @@ public class PlumbingSmokeTest extends JmsTestBase {
     eventDispatch.fire(receiver.topicEvent);
     assertNotNull(((ObjectMessage) consumer.receive()).getObject());
     assertNull(consumer.receiveNoWait());
+    consumer.close();
   }
 
   @Test(timeout = TEST_TIMEOUT)
@@ -158,6 +161,8 @@ public class PlumbingSmokeTest extends JmsTestBase {
   }
 
   private void assertEmpty(Queue queue) throws JMSException {
-    assertFalse(testSession.createBrowser(queue).getEnumeration().hasMoreElements());
+    MessageConsumer consumer = testSession.createConsumer(queue);
+    assertNull(consumer.receiveNoWait());
+    consumer.close();
   }
 }
