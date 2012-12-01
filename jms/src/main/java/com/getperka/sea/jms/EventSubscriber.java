@@ -41,12 +41,19 @@ public interface EventSubscriber {
    * {@link SubscriptionOptions} annotation, it will be used. If no annotation is specified, the
    * annotation defaults will be used. The default modes essentially extend the behavior of a local
    * {@link EventDispatch} instance across an arbitrary number of subscribers.
+   * 
+   * @param eventType a specific concrete event type to be subscribed to
+   * @return a handle which allows the subscription to be canceled
    */
-  void subscribe(Class<? extends Event> eventType) throws EventSubscriberException;
+  EventSubscription subscribe(Class<? extends Event> eventType) throws EventSubscriberException;
 
   /**
    * Subscribe to an event with specific options.
+   * 
+   * @param eventType a specific concrete event type to be subscribed to
+   * @param options override the default subscription options for the type
+   * @return a handle which allows the subscription to be canceled
    */
-  void subscribe(Class<? extends Event> eventType, SubscriptionOptions options)
+  EventSubscription subscribe(Class<? extends Event> eventType, SubscriptionOptions options)
       throws EventSubscriberException;
 }

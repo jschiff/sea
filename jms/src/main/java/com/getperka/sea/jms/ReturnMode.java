@@ -1,4 +1,4 @@
-package com.getperka.sea.jms.inject;
+package com.getperka.sea.jms;
 /*
  * #%L
  * Simple Event Architecture - JMS Support
@@ -19,19 +19,19 @@ package com.getperka.sea.jms.inject;
  * #L%
  */
 
-import static java.lang.annotation.ElementType.FIELD;
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.ElementType.PARAMETER;
+import com.getperka.sea.EventDispatch;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
-import com.google.inject.BindingAnnotation;
-
-@BindingAnnotation
-@Documented
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ FIELD, PARAMETER, METHOD })
-public @interface EventReturnQueue {}
+/**
+ * Controls the destination of an event when it is passed to {@link EventDispatch#fire} after having
+ * been received.
+ */
+public enum ReturnMode {
+  /**
+   * Return the event to the JMS reply-to Destination.
+   */
+  RETURN_TO_SENDER,
+  /**
+   * Use the default {@link SubscriptionOptions#sendMode()} for the event.
+   */
+  USE_SEND_MODE;
+}

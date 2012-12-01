@@ -40,44 +40,33 @@ import javax.jms.Topic;
 public @interface SubscriptionOptions {
 
   /**
-   * Controls the destination type used when routing an event message.
-   */
-  public enum DestinationType {
-    /**
-     * Use a JMS {@link Queue}. Events sent via a queue will be received by exactly one subscriber.
-     */
-    QUEUE,
-    /**
-     * Use a JMS {@link Topic}. Events sent via a topic will be received by all subscribers.
-     */
-    TOPIC;
-  }
-
-  /**
    * Allows the name of the queue or topic to be overridden. If left unspecified, the canonical name
    * of the event type will be used.
    */
   String destinationName() default "";
 
   /**
-   * Durable subscriptions are used with {@link DestinationType#TOPIC} to ensure that all messages
-   * sent to a topic will eventually be received by a subscriber, even if the process is temporarily
-   * halted.
+   * Durable subscriptions are used with {@link SendMode#TOPIC} to ensure that all messages sent to
+   * a topic will eventually be received by a subscriber, even if the process is temporarily halted.
    */
   String durableSubscriberId() default "";
 
   /**
    * An event's return mode determines how the event is routed if it is re-fired after being
-   * received. The default mode is to send the event via a topic so that all subscribers may see the
-   * event. Electing to return it via a queue allows the re-fired event to be sent back only to the
-   * subscriber that originally sent it. The latter is appropriate when the event is the result of a
-   * stateful process and is meaningless or uninteresting to an arbitrary subscriber.
+   * received from a JMS destination. The default is to use the {@link #sendMode()}.
    */
-  DestinationType returnMode() default DestinationType.TOPIC;
+  ReturnMode returnMode() default ReturnMode.USE_SEND_MODE;
 
   /**
    * An event can be sent either via a JMS {@link Queue} or a {@link Topic}. The former is provides
-   * single-issue distribution semantics, while the latter provides broadcast semantics.
+   * single-issue distribution semantics, while the latter provides broadcast semantics. The default
+   * is {@link SendMode#TOPIC}.
    */
-  DestinationType sendMode() default DestinationType.TOPIC;
+  SendMode sendMode() default SendMode.TOPIC;
+
+  /**
+   * A subscriber can elect not to send or receive certain events by using an alternate
+   * {@link SubscriptionMode}. The default behavior is to send, receive, and acknowledge events.
+   */
+  SubscriptionMode subscriptionMode() default SubscriptionMode.DEFAULT;
 }

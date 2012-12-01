@@ -1,4 +1,5 @@
 package com.getperka.sea;
+
 /*
  * #%L
  * Simple Event Architecture - Core
@@ -70,11 +71,14 @@ public class BaseCompositeEvent implements CompositeEvent {
   }
 
   /**
-   * Examines the current collection of facets and returns the first one assignable to the requested
-   * type. If there are no currently-registered facets of the requested type, this method will
-   * return {@code null}.
+   * Examines the event and its collection of facets and returns the first one assignable to the
+   * requested type. If there are no currently-registered facets of the requested type, this method
+   * will return {@code null}.
    */
   public <E extends Event> E asEventFacet(Class<E> eventType) {
+    if (eventType.isInstance(this)) {
+      return eventType.cast(this);
+    }
     for (Event evt : facets) {
       if (eventType.isInstance(evt)) {
         return eventType.cast(evt);

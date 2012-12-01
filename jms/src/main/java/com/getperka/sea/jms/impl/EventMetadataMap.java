@@ -24,19 +24,21 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
 
 import com.getperka.sea.Event;
-import com.getperka.sea.jms.impl.EventSubscriberImpl.EventReference;
 
 /**
  * Manages a mapping between {@link Event} and {@link EventMetadata} instances.
  */
 @Singleton
 public class EventMetadataMap {
+  private final Lock cleanupLock = new ReentrantLock();
   private final ConcurrentMap<EventReference, EventMetadata> map =
       new ConcurrentHashMap<EventReference, EventMetadata>();
   private Provider<EventMetadata> metadata;
@@ -62,9 +64,15 @@ public class EventMetadataMap {
   }
 
   private void cleanup() {
-    Reference<? extends Event> ref;
-    for (ref = staleEventReferences.poll(); ref != null; ref = staleEventReferences.poll()) {
-      map.remove(ref);
+    if (cleanupLock.tryLock()) {
+      try {
+        Reference<? extends Event> ref;
+        for (ref = staleEventReferences.poll(); ref != null; ref = staleEventReferences.poll()) {
+          map.remove(ref);
+        }
+      } finally {
+        cleanupLock.unlock();
+      }
     }
   }
 }

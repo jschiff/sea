@@ -1,4 +1,5 @@
 package com.getperka.sea.jms;
+
 /*
  * #%L
  * Simple Event Architecture - JMS Support
@@ -19,6 +20,9 @@ package com.getperka.sea.jms;
  * #L%
  */
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
@@ -35,24 +39,34 @@ import com.getperka.sea.EventDispatchers;
  * Provides setup of basic services for JMS-related tests.
  */
 public class JmsTestBase {
-  protected static final int TEST_TIMEOUT = 5000;
+  protected static final int TEST_TIMEOUT = 1000;
 
   protected ConnectionFactory connectionFactory;
+  /**
+   * The 0-th element of {@link #eventDispatches}.
+   */
   protected EventDispatch eventDispatch;
+  private List<EventDispatch> eventDispatches = new ArrayList<EventDispatch>();;
+  /**
+   * The 0-th element of {@link #eventSubscribers}.
+   */
   protected EventSubscriber eventSubscriber;
+  private List<EventSubscriber> eventSubscribers = new ArrayList<EventSubscriber>();
   protected Session testSession;
 
   @After
   public void after() throws JMSException {
-    eventSubscriber.shutdown();
-    eventDispatch.shutdown();
+    for (EventSubscriber sub : eventSubscribers) {
+      sub.shutdown();
+    }
+    for (EventDispatch dispatch : eventDispatches) {
+      dispatch.shutdown();
+    }
     testSession.close();
   }
 
   @Before
   public void before() throws JMSException {
-    eventDispatch = EventDispatchers.create();
-
     // Use a non-persistent, loopback test server
     connectionFactory = new ActiveMQConnectionFactory(
         "vm://localhost?broker.persistent=false");
@@ -61,6 +75,28 @@ public class JmsTestBase {
     connection.start();
     testSession = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 
-    eventSubscriber = EventSubscribers.create(eventDispatch, connectionFactory);
+    for (int i = 0, j = getDomainCount(); i < j; i++) {
+      EventDispatch d = EventDispatchers.create();
+      EventSubscriber s = EventSubscribers.create(d, connectionFactory);
+
+      eventDispatches.add(d);
+      eventSubscribers.add(s);
+      if (i == 0) {
+        eventDispatch = d;
+        eventSubscriber = s;
+      }
+    }
+  }
+
+  protected EventDispatch dispatch(int index) {
+    return eventDispatches.get(index);
+  }
+
+  protected int getDomainCount() {
+    return 1;
+  }
+
+  protected EventSubscriber subscriber(int index) {
+    return eventSubscribers.get(index);
   }
 }

@@ -31,15 +31,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.jms.JMSException;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
-import com.getperka.sea.EventDispatchers;
 import com.getperka.sea.Receiver;
-import com.getperka.sea.jms.SubscriptionOptions.DestinationType;
 
 /**
  * Verify that a ReturningEvent dispatched via a topic is routed correctly when re-fired.
@@ -58,7 +55,7 @@ import com.getperka.sea.jms.SubscriptionOptions.DestinationType;
  */
 public class ReturningEventTest extends JmsTestBase {
 
-  @SubscriptionOptions(returnMode = DestinationType.QUEUE)
+  @SubscriptionOptions(returnMode = ReturnMode.RETURN_TO_SENDER)
   static class MyReturningEvent implements Event, Serializable {
     private static final long serialVersionUID = 1L;
     private transient boolean isLocal = true;
@@ -104,30 +101,21 @@ public class ReturningEventTest extends JmsTestBase {
     }
   }
 
-  private EventDispatch eventDispatch2;
-  private EventDispatch eventDispatch3;
-  private EventSubscriber eventSubscriber2;
-  private EventSubscriber eventSubscriber3;
+  protected EventDispatch eventDispatch2;
 
-  @Override
-  @After
-  public void after() throws JMSException {
-    eventSubscriber2.shutdown();
-    eventDispatch2.shutdown();
-    eventSubscriber3.shutdown();
-    eventDispatch3.shutdown();
-    super.after();
-  }
+  protected EventDispatch eventDispatch3;
+  protected EventSubscriber eventSubscriber2;
+  protected EventSubscriber eventSubscriber3;
 
   @Override
   @Before
   public void before() throws JMSException {
     super.before();
 
-    eventDispatch2 = EventDispatchers.create();
-    eventSubscriber2 = EventSubscribers.create(eventDispatch2, connectionFactory);
-    eventDispatch3 = EventDispatchers.create();
-    eventSubscriber3 = EventSubscribers.create(eventDispatch3, connectionFactory);
+    eventDispatch2 = dispatch(1);
+    eventDispatch3 = dispatch(2);
+    eventSubscriber2 = subscriber(1);
+    eventSubscriber3 = subscriber(2);
   }
 
   @Test(timeout = TEST_TIMEOUT)
@@ -192,5 +180,10 @@ public class ReturningEventTest extends JmsTestBase {
     collector3.await();
     assertEquals(1, collector3.numberCollected.get());
     assertTrue(collector3.collected.poll().isLocal());
+  }
+
+  @Override
+  protected int getDomainCount() {
+    return 3;
   }
 }

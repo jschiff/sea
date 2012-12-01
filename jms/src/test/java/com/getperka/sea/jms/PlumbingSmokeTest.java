@@ -26,7 +26,6 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 
 import java.io.Serializable;
-import java.util.concurrent.CountDownLatch;
 
 import javax.jms.JMSException;
 import javax.jms.Message;
@@ -38,34 +37,11 @@ import javax.jms.Topic;
 import org.junit.Test;
 
 import com.getperka.sea.Event;
-import com.getperka.sea.Receiver;
-import com.getperka.sea.jms.SubscriptionOptions.DestinationType;
+import com.getperka.sea.testing.EventCountDownLatch;
 
 public class PlumbingSmokeTest extends JmsTestBase {
 
-  static class EventReceiver {
-    CountDownLatch latch = new CountDownLatch(1);
-    MyQueueEvent queueEvent;
-    int queueEvents;
-    MyTopicEvent topicEvent;
-    int topicEvents;
-
-    @Receiver
-    void queueEvent(MyQueueEvent evt) {
-      queueEvent = evt;
-      queueEvents++;
-      latch.countDown();
-    }
-
-    @Receiver
-    void topicEvent(MyTopicEvent evt) {
-      topicEvent = evt;
-      topicEvents++;
-      latch.countDown();
-    }
-  }
-
-  @SubscriptionOptions(sendMode = DestinationType.QUEUE)
+  @SubscriptionOptions(sendMode = SendMode.QUEUE)
   static class MyQueueEvent implements Event, Serializable {
     private static final long serialVersionUID = 1L;
   }
@@ -88,19 +64,21 @@ public class PlumbingSmokeTest extends JmsTestBase {
 
     eventSubscriber.subscribe(MyQueueEvent.class);
 
-    EventReceiver receiver = new EventReceiver();
-    eventDispatch.register(receiver);
+    EventCountDownLatch<MyQueueEvent> receiver = EventCountDownLatch.create(eventDispatch,
+        MyQueueEvent.class, 1);
 
-    testSession.createProducer(queue).send(testSession.createObjectMessage(new MyQueueEvent()));
-    receiver.latch.await();
-    assertNotNull(receiver.queueEvent);
-    assertEquals(1, receiver.queueEvents);
+    MyQueueEvent event = new MyQueueEvent();
+    testSession.createProducer(queue).send(testSession.createObjectMessage(event));
+    receiver.await();
+    MyQueueEvent received = receiver.getEventQueue().poll();
+    assertNotNull(received);
+    assertNotSame(event, receiver.getEventQueue().poll());
 
     // Ensure that the event wasn't re-sent to the queue
     assertEmpty(queue);
 
     // Now re-fire the event and make sure it's in the queue
-    eventDispatch.fire(receiver.queueEvent);
+    eventDispatch.fire(received);
     MessageConsumer consumer = testSession.createConsumer(queue);
     assertNotNull(((ObjectMessage) consumer.receive()).getObject());
     assertNull(consumer.receiveNoWait());
@@ -128,23 +106,25 @@ public class PlumbingSmokeTest extends JmsTestBase {
 
     eventSubscriber.subscribe(MyTopicEvent.class);
 
-    EventReceiver receiver = new EventReceiver();
-    eventDispatch.register(receiver);
+    EventCountDownLatch<MyTopicEvent> receiver = EventCountDownLatch.create(eventDispatch,
+        MyTopicEvent.class, 1);
 
-    testSession.createProducer(queue).send(testSession.createObjectMessage(new MyTopicEvent()));
+    MyTopicEvent event = new MyTopicEvent();
+    testSession.createProducer(queue).send(testSession.createObjectMessage(event));
     // Drain this view of the topic
     assertNotNull(((ObjectMessage) consumer.receive()).getObject());
     assertNull(consumer.receiveNoWait());
 
-    receiver.latch.await();
-    assertNotNull(receiver.topicEvent);
-    assertEquals(1, receiver.topicEvents);
+    receiver.await();
+    MyTopicEvent received = receiver.getEventQueue().poll();
+    assertNotNull(received);
+    assertNotSame(event, received);
 
     // Ensure that the event wasn't re-sent to the queue
     assertNull(consumer.receiveNoWait());
 
     // Now re-fire the event and make sure it was published to the topic
-    eventDispatch.fire(receiver.topicEvent);
+    eventDispatch.fire(received);
     assertNotNull(((ObjectMessage) consumer.receive()).getObject());
     assertNull(consumer.receiveNoWait());
     consumer.close();

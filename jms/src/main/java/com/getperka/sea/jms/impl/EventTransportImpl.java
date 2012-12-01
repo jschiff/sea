@@ -1,4 +1,5 @@
 package com.getperka.sea.jms.impl;
+
 /*
  * #%L
  * Simple Event Architecture - JMS Support
@@ -30,29 +31,51 @@ import javax.jms.Session;
 import com.getperka.sea.Event;
 import com.getperka.sea.jms.EventTransport;
 import com.getperka.sea.jms.EventTransportException;
+import com.getperka.sea.jms.MessageEvent;
 import com.getperka.sea.jms.inject.EventSession;
+import com.google.inject.Injector;
 
 public class EventTransportImpl implements EventTransport {
 
-  @Inject
-  @EventSession
+  private Injector injector;
   private Session session;
 
   protected EventTransportImpl() {}
 
   @Override
   public boolean canTransport(Class<? extends Event> eventType) {
-    return Serializable.class.isAssignableFrom(eventType);
+    return MessageEvent.class.isAssignableFrom(eventType) ||
+      Serializable.class.isAssignableFrom(eventType);
   }
 
   @Override
-  public Event decode(Message message) throws EventTransportException {
+  public <T extends Event> T decode(Class<T> eventType, Message message)
+      throws EventTransportException {
     try {
-      if (message instanceof ObjectMessage) {
-        return (Event) ((ObjectMessage) message).getObject();
+      // Support for SEA's custom MessageEvent
+      if (MessageEvent.class.isAssignableFrom(eventType)) {
+        T toReturn = injector.getInstance(eventType);
+        ((MessageEvent) toReturn).copyFromMessage(message);
+        return toReturn;
       }
-      throw new EventTransportException("Message payload of unsupported type "
-        + message.getClass().getName());
+
+      // Assume that any incoming ObjectMessage contains an Event
+      if (Serializable.class.isAssignableFrom(eventType)) {
+        if (!(message instanceof ObjectMessage)) {
+          throw new EventTransportException("Expected a JMS ObjectEvent, received a "
+            + message.getClass().getName());
+        }
+        Serializable event = ((ObjectMessage) message).getObject();
+        try {
+          return eventType.cast(event);
+        } catch (ClassCastException e) {
+          throw new EventTransportException("Incoming JMS ObjectMessage contained a "
+            + event.getClass().getName() + " which is not assignable to the expected event type "
+            + eventType.getName());
+        }
+      }
+
+      throw new EventTransportException("Untransportable event type " + eventType.getName());
     } catch (JMSException e) {
       throw new EventTransportException("Exception occurred during event transport", e);
     }
@@ -61,6 +84,9 @@ public class EventTransportImpl implements EventTransport {
   @Override
   public Message encode(Event event) throws EventTransportException {
     try {
+      if (event instanceof MessageEvent) {
+        return ((MessageEvent) event).toMessage(session);
+      }
       if (event instanceof Serializable) {
         return session.createObjectMessage((Serializable) event);
       }
@@ -69,6 +95,12 @@ public class EventTransportImpl implements EventTransport {
     } catch (JMSException e) {
       throw new EventTransportException("Exception occurred during event transport", e);
     }
+  }
+
+  @Inject
+  void inject(Injector injector, @EventSession Session session) {
+    this.injector = injector;
+    this.session = session;
   }
 
 }

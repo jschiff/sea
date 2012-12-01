@@ -20,17 +20,16 @@ package com.getperka.sea.jms.inject;
  * #L%
  */
 
+import javax.inject.Singleton;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
-import javax.jms.Queue;
 import javax.jms.Session;
 
 import com.getperka.sea.jms.EventSubscriber;
 import com.getperka.sea.jms.impl.EventSubscriberImpl;
 import com.google.inject.PrivateModule;
 import com.google.inject.Provides;
-import com.google.inject.Singleton;
 
 public class JmsEventModule extends PrivateModule {
 
@@ -50,17 +49,10 @@ public class JmsEventModule extends PrivateModule {
     return conn;
   }
 
-  @EventReturnQueue
-  @Provides
-  @Singleton
-  Queue returnQueue(@EventSession Session session) throws JMSException {
-    return session.createTemporaryQueue();
-  }
-
   @EventSession
   @Provides
   @Singleton
   Session session(@EventConnection Connection conn) throws JMSException {
-    return conn.createSession(false, Session.AUTO_ACKNOWLEDGE);
+    return conn.createSession(false, Session.CLIENT_ACKNOWLEDGE);
   }
 }

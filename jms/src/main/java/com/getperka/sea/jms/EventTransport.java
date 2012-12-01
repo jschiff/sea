@@ -30,7 +30,8 @@ import com.google.inject.ImplementedBy;
 
 /**
  * Defines how {@link Event} instances should be transformed to and from {@link Message} instances.
- * The default implementation of EventTransport support types that implements {@link Serializable}.
+ * The default implementation of EventTransport support types that implements {@link Serializable}
+ * or {@link MessageEvent}.
  */
 @ImplementedBy(EventTransportImpl.class)
 public interface EventTransport {
@@ -42,7 +43,7 @@ public interface EventTransport {
   /**
    * Construct an {@link Event} instance from a JMS {@link Message}.
    */
-  Event decode(Message message) throws EventTransportException;
+  <T extends Event> T decode(Class<T> eventType, Message message) throws EventTransportException;
 
   /**
    * Construct a JMS {@link Message} from an {@link Event} instance.
