@@ -30,7 +30,7 @@ import java.io.Serializable;
 import org.junit.Test;
 
 import com.getperka.sea.Event;
-import com.getperka.sea.testing.EventCountDownLatch;
+import com.getperka.sea.util.EventLatch;
 
 public class ModeTest extends JmsTestBase {
 
@@ -53,11 +53,11 @@ public class ModeTest extends JmsTestBase {
         .subscribe(MyEvent.class, Receiver.class.getAnnotation(SubscriptionOptions.class));
     subscriber(2).subscribe(MyEvent.class, Sender.class.getAnnotation(SubscriptionOptions.class));
 
-    EventCountDownLatch<MyEvent> bothLatch = EventCountDownLatch.create(
+    EventLatch<MyEvent> bothLatch = EventLatch.create(
         dispatch(0), MyEvent.class, 0);
-    EventCountDownLatch<MyEvent> receiveLatch = EventCountDownLatch.create(
+    EventLatch<MyEvent> receiveLatch = EventLatch.create(
         dispatch(1), MyEvent.class, 0);
-    EventCountDownLatch<MyEvent> sendLatch = EventCountDownLatch.create(
+    EventLatch<MyEvent> sendLatch = EventLatch.create(
         dispatch(2), MyEvent.class, 0);
 
     /*

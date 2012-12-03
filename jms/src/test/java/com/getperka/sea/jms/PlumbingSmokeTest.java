@@ -37,7 +37,7 @@ import javax.jms.Topic;
 import org.junit.Test;
 
 import com.getperka.sea.Event;
-import com.getperka.sea.testing.EventCountDownLatch;
+import com.getperka.sea.util.EventLatch;
 
 public class PlumbingSmokeTest extends JmsTestBase {
 
@@ -64,7 +64,7 @@ public class PlumbingSmokeTest extends JmsTestBase {
 
     eventSubscriber.subscribe(MyQueueEvent.class);
 
-    EventCountDownLatch<MyQueueEvent> receiver = EventCountDownLatch.create(eventDispatch,
+    EventLatch<MyQueueEvent> receiver = EventLatch.create(eventDispatch,
         MyQueueEvent.class, 1);
 
     MyQueueEvent event = new MyQueueEvent();
@@ -106,7 +106,7 @@ public class PlumbingSmokeTest extends JmsTestBase {
 
     eventSubscriber.subscribe(MyTopicEvent.class);
 
-    EventCountDownLatch<MyTopicEvent> receiver = EventCountDownLatch.create(eventDispatch,
+    EventLatch<MyTopicEvent> receiver = EventLatch.create(eventDispatch,
         MyTopicEvent.class, 1);
 
     MyTopicEvent event = new MyTopicEvent();

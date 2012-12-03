@@ -28,7 +28,7 @@ import javax.jms.TextMessage;
 
 import org.junit.Test;
 
-import com.getperka.sea.testing.EventCountDownLatch;
+import com.getperka.sea.util.EventLatch;
 
 /**
  * Tests event types that can transform themselves to and from JMS messages.
@@ -65,7 +65,7 @@ public class MessageEventTest extends JmsTestBase {
     MyEvent evt = new MyEvent();
     evt.setData("Hello world!");
 
-    EventCountDownLatch<MyEvent> latch = EventCountDownLatch.create(dispatch(1), MyEvent.class, 1);
+    EventLatch<MyEvent> latch = EventLatch.create(dispatch(1), MyEvent.class, 1);
 
     dispatch(0).fire(evt);
 
