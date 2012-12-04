@@ -39,7 +39,7 @@ import com.getperka.sea.EventDispatchers;
  * Provides setup of basic services for JMS-related tests.
  */
 public class JmsTestBase {
-  protected static final int TEST_TIMEOUT = 1000000;
+  protected static final int TEST_TIMEOUT = 1000;
 
   protected ConnectionFactory connectionFactory;
   /**

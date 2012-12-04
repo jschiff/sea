@@ -27,17 +27,21 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import javax.jms.Message;
 import javax.jms.Queue;
 import javax.jms.Topic;
 
 /**
  * Controls options related to Event routing.
+ * 
+ * @see SubscriptionOptionsBuilder
  */
 @Inherited
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface SubscriptionOptions {
+  // NB: When adding additional methods, update the builder
 
   /**
    * Allows the name of the queue or topic to be overridden. If left unspecified, the canonical name
@@ -50,6 +54,13 @@ public @interface SubscriptionOptions {
    * a topic will eventually be received by a subscriber, even if the process is temporarily halted.
    */
   String durableSubscriberId() default "";
+
+  /**
+   * A JMS message selector expression used to filter messages received by a subscription.
+   * 
+   * @see Message
+   */
+  String messageSelector() default "";
 
   /**
    * An event's return mode determines how the event is routed if it is re-fired after being

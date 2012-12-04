@@ -127,16 +127,17 @@ public class EventSubscriberImpl implements EventSubscriber {
 
       if (mode.shouldReceive()) {
         MessageConsumer consumer;
+        String selector = options.messageSelector().isEmpty() ? null : options.messageSelector();
         switch (options.sendMode()) {
           case QUEUE:
-            consumer = session.createConsumer(destination, null, true);
+            consumer = session.createConsumer(destination, selector, true);
             break;
           case TOPIC:
             if (options.durableSubscriberId().isEmpty()) {
-              consumer = session.createConsumer(destination, null, true);
+              consumer = session.createConsumer(destination, selector, true);
             } else {
               consumer = session.createDurableSubscriber((Topic) destination,
-                  options.durableSubscriberId(), null, true);
+                  options.durableSubscriberId(), selector, true);
             }
             break;
           default:

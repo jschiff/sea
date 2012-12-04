@@ -1,4 +1,5 @@
 package com.getperka.sea.jms;
+
 /*
  * #%L
  * Simple Event Architecture - JMS Support
@@ -20,6 +21,9 @@ package com.getperka.sea.jms;
  */
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
+import java.util.concurrent.TimeUnit;
 
 import javax.jms.JMSException;
 import javax.jms.Message;
@@ -31,7 +35,8 @@ import org.junit.Test;
 import com.getperka.sea.util.EventLatch;
 
 /**
- * Tests event types that can transform themselves to and from JMS messages.
+ * Tests event types that can transform themselves to and from JMS messages. Also verify that JMS
+ * message selectors work.
  */
 public class MessageEventTest extends JmsTestBase {
 
@@ -53,11 +58,13 @@ public class MessageEventTest extends JmsTestBase {
 
     @Override
     public Message toMessage(Session session) throws JMSException {
-      return session.createTextMessage(data);
+      TextMessage msg = session.createTextMessage(data);
+      msg.setStringProperty("myHeader", data);
+      return msg;
     }
   }
 
-  @Test
+  @Test(timeout = TEST_TIMEOUT)
   public void test() throws EventSubscriberException, InterruptedException {
     subscriber(0).subscribe(MyEvent.class);
     subscriber(1).subscribe(MyEvent.class);
@@ -71,6 +78,46 @@ public class MessageEventTest extends JmsTestBase {
 
     latch.await();
     assertEquals(evt.getData(), latch.getEventQueue().poll().getData());
+  }
+
+  @Test(timeout = TEST_TIMEOUT)
+  public void testSelectorMatch() throws EventSubscriberException, InterruptedException {
+    SubscriptionOptions options =
+        new SubscriptionOptionsBuilder()
+            .messageSelector("myHeader = 'Hello world!'")
+            .build();
+
+    subscriber(0).subscribe(MyEvent.class);
+    subscriber(1).subscribe(MyEvent.class, options);
+    EventLatch<MyEvent> latch = EventLatch.create(dispatch(1), MyEvent.class, 1);
+
+    MyEvent evt = new MyEvent();
+    evt.setData("Hello world!");
+
+    dispatch(0).fire(evt);
+
+    latch.await();
+    assertEquals(evt.getData(), latch.getEventQueue().poll().getData());
+  }
+
+  @Test(timeout = TEST_TIMEOUT)
+  public void testSelectorNoMatch() throws EventSubscriberException, InterruptedException {
+    SubscriptionOptions options =
+        new SubscriptionOptionsBuilder()
+            .messageSelector("myHeader = 'Does not compute'")
+            .build();
+
+    subscriber(0).subscribe(MyEvent.class);
+    subscriber(1).subscribe(MyEvent.class, options);
+    EventLatch<MyEvent> latch = EventLatch.create(dispatch(1), MyEvent.class, 1);
+
+    MyEvent evt = new MyEvent();
+    evt.setData("Hello world!");
+
+    dispatch(0).fire(evt);
+
+    latch.await(100, TimeUnit.MILLISECONDS);
+    assertNull(latch.getEventQueue().poll());
   }
 
   @Override
