@@ -34,10 +34,10 @@ import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
 
 /**
- * Instances of EventScope are expected to be accessed only from within a single thread. They are
+ * Instances of ReceiverScope are expected to be accessed only from within a single thread. They are
  * reentrant, to support synchronous event dispatch if necessary.
  */
-public class EventScope extends BaseScope {
+public class ReceiverScope extends BaseScope {
 
   private static class Frame {
     final Map<Key<?>, Object> values = new ConcurrentHashMap<Key<?>, Object>();
@@ -56,7 +56,7 @@ public class EventScope extends BaseScope {
   private final ThreadLocal<Deque<Frame>> frameStack = new ThreadLocal<Deque<Frame>>() {
     @Override
     protected Deque<Frame> initialValue() {
-      return new ArrayDeque<EventScope.Frame>();
+      return new ArrayDeque<ReceiverScope.Frame>();
     }
   };
 

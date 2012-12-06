@@ -29,7 +29,7 @@ import com.google.inject.BindingAnnotation;
 
 /**
  * A binding annotation for the Event currently being dispatched. It is only valid in an
- * {@link EventScoped} context.
+ * {@link ReceiverScoped} context.
  */
 @BindingAnnotation
 @Retention(RetentionPolicy.RUNTIME)

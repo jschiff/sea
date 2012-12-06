@@ -29,7 +29,7 @@ import com.getperka.sea.ext.ReceiverTarget;
 import com.google.inject.BindingAnnotation;
 
 /**
- * A binding annotation for an AtomicBoolean in an {@link EventScope} to indicate if the
+ * A binding annotation for an AtomicBoolean in an {@link ReceiverScope} to indicate if the
  * {@link ReceiverTarget} was invoked.
  */
 @BindingAnnotation

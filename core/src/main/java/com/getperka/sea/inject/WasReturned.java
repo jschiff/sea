@@ -28,7 +28,7 @@ import java.lang.annotation.Target;
 import com.google.inject.BindingAnnotation;
 
 /**
- * A binding annotation for an {@code AtomicReference<Object>} in an {@link EventScope} to provide
+ * A binding annotation for an {@code AtomicReference<Object>} in an {@link ReceiverScope} to provide
  * the value returned from the decorated event dispatch callable chain.
  */
 @BindingAnnotation

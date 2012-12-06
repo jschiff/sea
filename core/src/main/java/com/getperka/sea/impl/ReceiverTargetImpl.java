@@ -49,8 +49,8 @@ import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.CurrentEvent;
 import com.getperka.sea.inject.DecoratorScope;
 import com.getperka.sea.inject.EventLogger;
-import com.getperka.sea.inject.EventScope;
-import com.getperka.sea.inject.EventScoped;
+import com.getperka.sea.inject.ReceiverScope;
+import com.getperka.sea.inject.ReceiverScoped;
 import com.getperka.sea.inject.GlobalDecorators;
 import com.getperka.sea.inject.ReceiverInstance;
 import com.getperka.sea.inject.WasDispatched;
@@ -65,7 +65,7 @@ import com.google.inject.TypeLiteral;
  * costs.
  */
 public class ReceiverTargetImpl implements SettableReceiverTarget {
-  @EventScoped
+  @ReceiverScoped
   static class Work implements Callable<Object> {
     @CurrentEvent
     @Inject
@@ -131,7 +131,7 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
   /**
    * Scope data for constructing various components.
    */
-  private EventScope eventScope;
+  private ReceiverScope eventScope;
   /**
    * Injected configuration for top-level decorators.
    */
@@ -292,7 +292,7 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
   void inject(
       Provider<DecoratorContext> decoratorContexts,
       DecoratorScope decoratorScope,
-      EventScope eventScope,
+      ReceiverScope eventScope,
       @GlobalDecorators Collection<AnnotatedElement> globalDecorators,
       Injector injector,
       @EventLogger Logger logger,

@@ -29,7 +29,7 @@ import com.getperka.sea.Event;
 import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.CurrentEvent;
-import com.getperka.sea.inject.EventScoped;
+import com.getperka.sea.inject.ReceiverScoped;
 import com.getperka.sea.inject.WasDispatched;
 import com.getperka.sea.inject.WasReturned;
 import com.getperka.sea.inject.WasThrown;
@@ -38,7 +38,7 @@ import com.getperka.sea.inject.WasThrown;
  * Provides information about the disposition of a call to
  * {@link ReceiverTarget#dispatch(com.getperka.sea.Event)}.
  */
-@EventScoped
+@ReceiverScoped
 public class DispatchResultImpl implements DispatchResult {
   private Event event;
   private boolean received;

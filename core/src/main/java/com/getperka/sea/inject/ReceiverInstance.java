@@ -30,7 +30,7 @@ import javax.inject.Provider;
 import com.google.inject.BindingAnnotation;
 
 /**
- * A binding annotation for an {@link Object} in an {@link EventScope} to provide the instance that
+ * A binding annotation for an {@link Object} in an {@link ReceiverScope} to provide the instance that
  * the receiving method will be invoked upon. Injection sites of ReceiverInstance must be capable of
  * handling {@code null} values if the receiver method is static. Generally, this should be done by
  * injecting a {@link Provider}.

@@ -1,4 +1,5 @@
 package com.getperka.sea.inject;
+
 /*
  * #%L
  * Simple Event Architecture - Core
@@ -18,7 +19,6 @@ package com.getperka.sea.inject;
  * limitations under the License.
  * #L%
  */
-
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
@@ -39,13 +39,14 @@ import com.getperka.sea.TestConstants;
 import com.getperka.sea.impl.HasInjector;
 import com.google.inject.ProvisionException;
 
+
 /**
- * Verify that placing an {@link EventScoped} annotation on a type results in single instance per
+ * Verify that placing an {@link ReceiverScoped} annotation on a type results in single instance per
  * event dispatch.
  */
-public class EventScopeTest {
+public class ReceiverScopeTest {
 
-  @EventScoped
+  @ReceiverScoped
   static class IsEventScoped {}
 
   static class MyReceiver {

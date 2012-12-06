@@ -28,11 +28,15 @@ import java.lang.annotation.Target;
 
 import javax.inject.Scope;
 
+import com.getperka.sea.Event;
+import com.getperka.sea.ext.ReceiverTarget;
+
 /**
- * Defines a scope whose lifetime is bounded by the dispatch of an event to a single receiver.
+ * Defines a scope whose lifetime is bounded by the dispatch of an {@link Event} to a single
+ * {@link ReceiverTarget}. This is appropriate for logging or persistence contexts.
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Scope
 @Target({ ElementType.TYPE, ElementType.METHOD })
-public @interface EventScoped {}
+public @interface ReceiverScoped {}

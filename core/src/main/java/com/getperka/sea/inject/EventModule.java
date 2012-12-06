@@ -95,9 +95,9 @@ public class EventModule extends PrivateModule {
   }
 
   private void bindEventScope() {
-    EventScope eventScope = new EventScope();
-    bindScope(EventScoped.class, eventScope);
-    bind(EventScope.class).toInstance(eventScope);
+    ReceiverScope eventScope = new ReceiverScope();
+    bindScope(ReceiverScoped.class, eventScope);
+    bind(ReceiverScope.class).toInstance(eventScope);
 
     bind(Event.class)
         .annotatedWith(CurrentEvent.class)
