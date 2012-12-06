@@ -22,37 +22,71 @@ package com.getperka.sea.inject;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.getperka.sea.Event;
+import com.getperka.sea.ext.ReceiverTarget;
 import com.google.inject.Key;
 import com.google.inject.Provider;
+import com.google.inject.TypeLiteral;
 
+/**
+ * Instances of EventScope are expected to be accessed only from within a single thread. They are
+ * reentrant, to support synchronous event dispatch if necessary.
+ */
 public class EventScope extends BaseScope {
-  private final ThreadLocal<Deque<Event>> event = new ThreadLocal<Deque<Event>>() {
+
+  private static class Frame {
+    final Map<Key<?>, Object> values = new ConcurrentHashMap<Key<?>, Object>();
+
+    Frame(Event event, ReceiverTarget receiverTarget) {
+      values.put(Key.get(Event.class, CurrentEvent.class), event);
+      values.put(Key.get(ReceiverTarget.class), receiverTarget);
+      values.put(Key.get(AtomicBoolean.class, WasDispatched.class), new AtomicBoolean());
+      values.put(Key.get(new TypeLiteral<AtomicReference<Object>>() {}, WasReturned.class),
+          new AtomicReference<Object>());
+      values.put(Key.get(new TypeLiteral<AtomicReference<Throwable>>() {}, WasThrown.class),
+          new AtomicReference<Object>());
+    }
+  }
+
+  private final ThreadLocal<Deque<Frame>> frameStack = new ThreadLocal<Deque<Frame>>() {
     @Override
-    protected Deque<Event> initialValue() {
-      return new ArrayDeque<Event>();
+    protected Deque<Frame> initialValue() {
+      return new ArrayDeque<EventScope.Frame>();
     }
   };
 
-  public void enter(Event event) {
-    this.event.get().push(event);
+  public void enter(Event event, ReceiverTarget receiverTarget,
+      javax.inject.Provider<?> receiverInstance) {
+    Frame frame = new Frame(event, receiverTarget);
+    frameStack.get().push(frame);
+    // Slightly delay instantiation of the receiver instance until the frame is installed
+    Object instance = receiverInstance == null ? null : receiverInstance.get();
+    if (instance == null) {
+      instance = NULL;
+    }
+    frame.values.put(Key.get(Object.class, ReceiverInstance.class), instance);
   }
 
   public void exit() {
-    this.event.get().pop();
+    frameStack.get().pop();
   }
 
   @Override
-  public <T> Provider<T> scope(Key<T> key, Provider<T> unscoped) {
-    if (CurrentEvent.class.equals(key.getAnnotationType())) {
-      return cast(new Provider<Event>() {
-        @Override
-        public Event get() {
-          return event.get().peek();
+  public <T> Provider<T> scope(final Key<T> key, final Provider<T> unscoped) {
+    return new MapProvider<T>(key, unscoped) {
+      @Override
+      protected Map<Key<?>, Object> scopeMap() {
+        Frame frame = frameStack.get().peek();
+        if (frame == null) {
+          throw new IllegalStateException("Not in an EventScope");
         }
-      });
-    }
-    return unscoped;
+        return frame.values;
+      }
+    };
   }
 }

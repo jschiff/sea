@@ -35,16 +35,13 @@ import com.getperka.sea.EventDispatch;
 import com.getperka.sea.ext.DispatchCompleteEvent;
 import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.ReceiverTarget;
-import com.getperka.sea.inject.CurrentEvent;
 import com.getperka.sea.inject.EventLogger;
-import com.getperka.sea.inject.EventScoped;
 
 /**
  * The top-level invocation of a {@link ReceiverTarget ReceiverTarget's} work. This class sets the
  * name of the current thread and provides unhandled exception dispatch for exceptions that occur
  * within the decorator / dispatch plumbing.
  */
-@EventScoped
 public class Invocation implements Callable<DispatchResult> {
   /**
    * State that is shared between Invocation instances to provide a global view of an event's
@@ -94,6 +91,10 @@ public class Invocation implements Callable<DispatchResult> {
     return toReturn;
   }
 
+  public void setEvent(Event event) {
+    this.event = event;
+  }
+
   public void setInvocation(ReceiverTarget target) {
     this.target = target;
   }
@@ -111,9 +112,8 @@ public class Invocation implements Callable<DispatchResult> {
   }
 
   @Inject
-  void inject(EventDispatch dispatch, @CurrentEvent Event event, @EventLogger Logger logger) {
+  void inject(EventDispatch dispatch, @EventLogger Logger logger) {
     this.dispatch = dispatch;
-    this.event = event;
     this.logger = logger;
   }
 

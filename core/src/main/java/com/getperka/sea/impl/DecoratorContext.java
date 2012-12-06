@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.inject.Inject;
+import javax.inject.Provider;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.EventDecorator;
@@ -44,8 +45,10 @@ public class DecoratorContext implements EventDecorator.Context<Annotation, Even
   private AtomicBoolean wasDispatched;
   private AtomicReference<Throwable> wasThrown;
   private Callable<Object> work;
-  private Object receiverInstance;
-
+  /**
+   * A {@link Provider} because the instance could be null for a static dispatch.
+   */
+  private Provider<Object> receiverInstance;
   private Event originalEvent;
 
   protected DecoratorContext() {}
@@ -67,7 +70,7 @@ public class DecoratorContext implements EventDecorator.Context<Annotation, Even
 
   @Override
   public Object getReceiverInstance() {
-    return receiverInstance;
+    return receiverInstance.get();
   }
 
   @Override
@@ -91,17 +94,24 @@ public class DecoratorContext implements EventDecorator.Context<Annotation, Even
   }
 
   @Inject
-  void inject(Annotation annotation, Event event, @CurrentEvent Event originalEvent,
-      @ReceiverInstance Object receiverInstance, ReceiverTarget target,
+  void inject(Annotation annotation, @CurrentEvent Event originalEvent,
+      @ReceiverInstance Provider<Object> receiverInstance, ReceiverTarget target,
       @WasDispatched AtomicBoolean wasDispatched, @WasThrown AtomicReference<Throwable> wasThrown,
       Callable<Object> work) {
     this.annotation = annotation;
-    this.event = event;
+    this.event = originalEvent;
     this.originalEvent = originalEvent;
     this.receiverInstance = receiverInstance;
     this.target = target;
     this.wasDispatched = wasDispatched;
     this.wasThrown = wasThrown;
     this.work = work;
+  }
+
+  /**
+   * A cheat method to allow an event facet to be substituted for the actual event being dispatched.
+   */
+  void setEvent(Event event) {
+    this.event = event;
   }
 }

@@ -1,4 +1,5 @@
 package com.getperka.sea.inject;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -27,8 +28,8 @@ import java.lang.annotation.Target;
 import com.google.inject.BindingAnnotation;
 
 /**
- * A binding annotation for an {@code AtomicReference<Object>} in an {@link DecoratorScope} to
- * provide the value returned from the decorated event dispatch callable chain.
+ * A binding annotation for an {@code AtomicReference<Object>} in an {@link EventScope} to provide
+ * the value returned from the decorated event dispatch callable chain.
  */
 @BindingAnnotation
 @Retention(RetentionPolicy.RUNTIME)

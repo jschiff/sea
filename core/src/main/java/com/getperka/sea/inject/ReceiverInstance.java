@@ -25,26 +25,17 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import javax.inject.Provider;
+
 import com.google.inject.BindingAnnotation;
 
 /**
- * A binding annotation for a {@link Object} in an {@link DecoratorScope} to provide the instance
- * that the receiving method will be invoked upon. If the receiver method is static, the value
- * {@link StaticInvocation#INSTANCE} will be injected, since injecting {@code null} value is poor
- * form.
+ * A binding annotation for an {@link Object} in an {@link EventScope} to provide the instance that
+ * the receiving method will be invoked upon. Injection sites of ReceiverInstance must be capable of
+ * handling {@code null} values if the receiver method is static. Generally, this should be done by
+ * injecting a {@link Provider}.
  */
 @BindingAnnotation
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.TYPE, ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER })
-public @interface ReceiverInstance {
-  /*
-   * The field is in an inner static class because placing non-constant final fields in an
-   * annotation type triggers javac bug 6857918.
-   */
-  public static class StaticInvocation {
-    /**
-     * Indicates that the receiver method is static.
-     */
-    public static final Object INSTANCE = new Object();
-  }
-}
+public @interface ReceiverInstance {}

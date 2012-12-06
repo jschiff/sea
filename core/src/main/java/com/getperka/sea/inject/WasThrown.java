@@ -29,7 +29,7 @@ import com.getperka.sea.ext.ReceiverTarget;
 import com.google.inject.BindingAnnotation;
 
 /**
- * A binding annotation for an {@code AtomicReference<Throwable>} in an {@link DecoratorScope} to
+ * A binding annotation for an {@code AtomicReference<Throwable>} in an {@link EventScope} to
  * provide any exception thrown by the {@link ReceiverTarget}.
  */
 @BindingAnnotation

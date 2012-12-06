@@ -1,4 +1,5 @@
 package com.getperka.sea.inject;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -28,7 +29,7 @@ import com.getperka.sea.ext.ReceiverTarget;
 import com.google.inject.BindingAnnotation;
 
 /**
- * A binding annotation for an AtomicBoolean in an {@link DecoratorScope} to indicate if the
+ * A binding annotation for an AtomicBoolean in an {@link EventScope} to indicate if the
  * {@link ReceiverTarget} was invoked.
  */
 @BindingAnnotation

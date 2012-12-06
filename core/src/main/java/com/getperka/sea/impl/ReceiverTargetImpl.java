@@ -45,11 +45,17 @@ import com.getperka.sea.Event;
 import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.EventDecoratorBinding;
+import com.getperka.sea.ext.ReceiverTarget;
+import com.getperka.sea.inject.CurrentEvent;
 import com.getperka.sea.inject.DecoratorScope;
 import com.getperka.sea.inject.EventLogger;
 import com.getperka.sea.inject.EventScope;
+import com.getperka.sea.inject.EventScoped;
 import com.getperka.sea.inject.GlobalDecorators;
 import com.getperka.sea.inject.ReceiverInstance;
+import com.getperka.sea.inject.WasDispatched;
+import com.getperka.sea.inject.WasReturned;
+import com.getperka.sea.inject.WasThrown;
 import com.google.inject.Injector;
 import com.google.inject.TypeLiteral;
 
@@ -59,29 +65,35 @@ import com.google.inject.TypeLiteral;
  * costs.
  */
 public class ReceiverTargetImpl implements SettableReceiverTarget {
-  private class Work implements Callable<Object> {
-    // These two variable are temporary state for the actual dispatch
-    private final AtomicBoolean wasDispatched = new AtomicBoolean();
-    private final AtomicReference<Object> wasReturned = new AtomicReference<Object>();
-    private final AtomicReference<Throwable> wasThrown = new AtomicReference<Throwable>();
-    private final Event event;
-    private final Object instance;
+  @EventScoped
+  static class Work implements Callable<Object> {
+    @CurrentEvent
+    @Inject
+    private Event event;
+    @Inject
+    @ReceiverInstance
+    private Provider<Object> instance;
+    @EventLogger
+    @Inject
+    private Logger logger;
+    @Inject
+    private ReceiverTarget target;
+    @Inject
+    @WasDispatched
+    private AtomicBoolean wasDispatched;
+    @Inject
+    @WasReturned
+    private AtomicReference<Object> wasReturned;
+    @Inject
+    @WasThrown
+    private AtomicReference<Throwable> wasThrown;
 
-    public Work(DecoratorScope decoratorScope, Event event) {
-      this.event = event;
-      instance = instanceProvider == null ? null : instanceProvider.get();
-      decoratorScope
-          .withReceiverInstance(
-              instance == null ? ReceiverInstance.StaticInvocation.INSTANCE : instance)
-          .withWasDispatched(wasDispatched)
-          .withWasReturned(wasReturned)
-          .withWasThrown(wasThrown);
-    }
+    Work() {}
 
     @Override
     public Object call() throws IllegalArgumentException, IllegalAccessException {
       try {
-        Object value = method.invoke(instance, event);
+        Object value = ((ReceiverTargetImpl) target).method.invoke(instance.get(), event);
         wasReturned.set(value);
         return value;
       } catch (InvocationTargetException e) {
@@ -105,7 +117,7 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
   /**
    * Vends instances of {@link EventDecorator.Context}.
    */
-  private Provider<EventDecorator.Context<Annotation, Event>> decoratorContexts;
+  private Provider<DecoratorContext> decoratorContexts;
   /**
    * Providers for the {@link EventDecorator} types that should be applied when dispatching an event
    * to the receiver method.
@@ -141,58 +153,59 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
    */
   private Method method;
   private Provider<DispatchResult> results;
+  private Provider<Work> works;
 
   protected ReceiverTargetImpl() {}
 
   @Override
   public DispatchResult dispatch(Event event) {
-    eventScope.enter(event);
-    decoratorScope
-        .withEvent(event)
-        .withTarget(this);
+    eventScope.enter(event, this, instanceProvider);
     try {
 
-      Callable<Object> toInvoke = new Work(decoratorScope, event);
+      Callable<Object> toInvoke = works.get();
 
       Iterator<Annotation> aIt = decoratorAnnotations.iterator();
       Iterator<Provider<EventDecorator<Annotation, Event>>> edIt = decoratorProviders.iterator();
       while (aIt.hasNext() && edIt.hasNext() && toInvoke != null) {
         Annotation annotation = aIt.next();
-        decoratorScope.withAnnotation(annotation).withWork(toInvoke);
+        decoratorScope.enter(annotation, toInvoke);
+        try {
+          EventDecorator<Annotation, Event> eventDecorator = edIt.next().get();
+          /*
+           * If the decorator can't receive the event, just drop it. This allows decorators that are
+           * specific to a certain event subtype to be applied to a receiver method that accepts a
+           * wider event type.
+           */
+          ParameterizedType type = (ParameterizedType) TypeLiteral.get(eventDecorator.getClass())
+              .getSupertype(EventDecorator.class)
+              .getType();
+          Type[] typeArgs = type.getActualTypeArguments();
 
-        EventDecorator<Annotation, Event> eventDecorator = edIt.next().get();
-        /*
-         * If the decorator can't receive the event, just drop it. This allows decorators that are
-         * specific to a certain event subtype to be applied to a receiver method that accepts a
-         * wider event type.
-         */
-        ParameterizedType type = (ParameterizedType) TypeLiteral.get(eventDecorator.getClass())
-            .getSupertype(EventDecorator.class)
-            .getType();
-        Type[] typeArgs = type.getActualTypeArguments();
-
-        // Does the decorator accept the annotation that we're currently looking at?
-        if (TypeLiteral.get(typeArgs[0]).getRawType().isAssignableFrom(annotation.annotationType())) {
-          Class<?> expectedEventType = TypeLiteral.get(typeArgs[1]).getRawType();
-          // Is the base event type assignable?
-          if (expectedEventType.isInstance(event)) {
-            toInvoke = eventDecorator.wrap(decoratorContexts.get());
-          } else if (event instanceof CompositeEvent) {
-            // If it's a composite event, are any of its facets assignable?
-            CompositeEvent composite = (CompositeEvent) event;
-            Collection<? extends Event> eventFacets = composite.getEventFacets();
-            if (eventFacets != null) {
-              for (Event facet : eventFacets) {
-                if (expectedEventType.isInstance(facet)) {
-                  // Swap the facet into the scope
-                  decoratorScope.withEvent(facet);
-                  toInvoke = eventDecorator.wrap(decoratorContexts.get());
-                  // Then restore the original event
-                  decoratorScope.withEvent(event);
+          // Does the decorator accept the annotation that we're currently looking at?
+          if (TypeLiteral.get(typeArgs[0]).getRawType()
+              .isAssignableFrom(annotation.annotationType())) {
+            Class<?> expectedEventType = TypeLiteral.get(typeArgs[1]).getRawType();
+            // Is the base event type assignable?
+            if (expectedEventType.isInstance(event)) {
+              toInvoke = eventDecorator.wrap(decoratorContexts.get());
+            } else if (event instanceof CompositeEvent) {
+              // If it's a composite event, are any of its facets assignable?
+              CompositeEvent composite = (CompositeEvent) event;
+              Collection<? extends Event> eventFacets = composite.getEventFacets();
+              if (eventFacets != null) {
+                for (Event facet : eventFacets) {
+                  if (expectedEventType.isInstance(facet)) {
+                    // Swap the facet into the context
+                    DecoratorContext ctx = decoratorContexts.get();
+                    ctx.setEvent(facet);
+                    toInvoke = eventDecorator.wrap(ctx);
+                  }
                 }
               }
             }
           }
+        } finally {
+          decoratorScope.exit();
         }
       }
 
@@ -277,13 +290,14 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
 
   @Inject
   void inject(
-      Provider<EventDecorator.Context<Annotation, Event>> decoratorContexts,
+      Provider<DecoratorContext> decoratorContexts,
       DecoratorScope decoratorScope,
       EventScope eventScope,
       @GlobalDecorators Collection<AnnotatedElement> globalDecorators,
       Injector injector,
       @EventLogger Logger logger,
-      Provider<DispatchResult> results) {
+      Provider<DispatchResult> results,
+      Provider<Work> works) {
     this.decoratorContexts = decoratorContexts;
     this.decoratorScope = decoratorScope;
     this.eventScope = eventScope;
@@ -291,6 +305,7 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
     this.injector = injector;
     this.logger = logger;
     this.results = results;
+    this.works = works;
   }
 
   private void computeDecorators() {

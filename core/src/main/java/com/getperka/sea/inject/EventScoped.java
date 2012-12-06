@@ -28,8 +28,11 @@ import java.lang.annotation.Target;
 
 import javax.inject.Scope;
 
+/**
+ * Defines a scope whose lifetime is bounded by the dispatch of an event to a single receiver.
+ */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ ElementType.TYPE, ElementType.METHOD })
 @Scope
+@Target({ ElementType.TYPE, ElementType.METHOD })
 public @interface EventScoped {}

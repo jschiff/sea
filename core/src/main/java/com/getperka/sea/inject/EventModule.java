@@ -23,7 +23,6 @@ package com.getperka.sea.inject;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.util.Collection;
-import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -38,14 +37,11 @@ import org.slf4j.LoggerFactory;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.ext.DispatchResult;
-import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.ReceiverTarget;
-import com.getperka.sea.impl.DecoratorContext;
 import com.getperka.sea.impl.DispatchImpl;
 import com.getperka.sea.impl.DispatchMap;
 import com.getperka.sea.impl.DispatchResultImpl;
 import com.getperka.sea.impl.Invocation;
-import com.getperka.sea.impl.InvocationProvider;
 import com.getperka.sea.impl.ReceiverTargetImpl;
 import com.getperka.sea.impl.SettableReceiverTarget;
 import com.getperka.sea.impl.SettableRegistration;
@@ -66,23 +62,13 @@ public class EventModule extends PrivateModule {
 
   @Override
   protected void configure() {
-    EventScope eventScope = new EventScope();
-    bindScope(EventScoped.class, eventScope);
-    bind(EventScope.class).toInstance(eventScope);
-
+    bindEventScope();
     bindReceiverScope();
-
-    bind(new TypeLiteral<EventDecorator.Context<Annotation, Event>>() {})
-        .to(DecoratorContext.class);
 
     bind(DispatchMap.class).asEagerSingleton();
 
     bind(DispatchResult.class).to(DispatchResultImpl.class);
 
-    bind(Event.class)
-        .annotatedWith(CurrentEvent.class)
-        .toProvider(eventScope.<Event> provider())
-        .in(eventScope);
     expose(Event.class).annotatedWith(CurrentEvent.class);
 
     bind(EventDispatch.class).to(DispatchImpl.class);
@@ -99,8 +85,6 @@ public class EventModule extends PrivateModule {
 
     bind(Invocation.class);
 
-    bind(new TypeLiteral<List<Invocation>>() {}).toProvider(InvocationProvider.class);
-
     bind(Logger.class)
         .annotatedWith(EventLogger.class)
         .toInstance(LoggerFactory.getLogger(EventDispatch.class));
@@ -110,6 +94,36 @@ public class EventModule extends PrivateModule {
     bind(SettableRegistration.class).to(SettableRegistrationImpl.class);
   }
 
+  private void bindEventScope() {
+    EventScope eventScope = new EventScope();
+    bindScope(EventScoped.class, eventScope);
+    bind(EventScope.class).toInstance(eventScope);
+
+    bind(Event.class)
+        .annotatedWith(CurrentEvent.class)
+        .toProvider(eventScope.<Event> provider())
+        .in(eventScope);
+    bind(AtomicBoolean.class)
+        .annotatedWith(WasDispatched.class)
+        .toProvider(eventScope.<AtomicBoolean> provider())
+        .in(eventScope);
+    bind(new TypeLiteral<AtomicReference<Object>>() {})
+        .annotatedWith(WasReturned.class)
+        .toProvider(eventScope.<AtomicReference<Object>> provider())
+        .in(eventScope);
+    bind(new TypeLiteral<AtomicReference<Throwable>>() {})
+        .annotatedWith(WasThrown.class)
+        .toProvider(eventScope.<AtomicReference<Throwable>> provider())
+        .in(eventScope);
+    bind(Object.class)
+        .annotatedWith(ReceiverInstance.class)
+        .toProvider(eventScope.<Object> provider())
+        .in(eventScope);
+    bind(ReceiverTarget.class)
+        .toProvider(eventScope.<ReceiverTarget> provider())
+        .in(eventScope);
+  }
+
   private void bindReceiverScope() {
     DecoratorScope decoratorScope = new DecoratorScope();
     bindScope(DecoratorScoped.class, decoratorScope);
@@ -117,34 +131,6 @@ public class EventModule extends PrivateModule {
 
     bind(Annotation.class)
         .toProvider(decoratorScope.<Annotation> provider())
-        .in(decoratorScope);
-
-    bind(AtomicBoolean.class)
-        .annotatedWith(WasDispatched.class)
-        .toProvider(decoratorScope.<AtomicBoolean> provider())
-        .in(decoratorScope);
-
-    bind(new TypeLiteral<AtomicReference<Object>>() {})
-        .annotatedWith(WasReturned.class)
-        .toProvider(decoratorScope.<AtomicReference<Object>> provider())
-        .in(decoratorScope);
-
-    bind(new TypeLiteral<AtomicReference<Throwable>>() {})
-        .annotatedWith(WasThrown.class)
-        .toProvider(decoratorScope.<AtomicReference<Throwable>> provider())
-        .in(decoratorScope);
-
-    bind(Event.class)
-        .toProvider(decoratorScope.<Event> provider())
-        .in(decoratorScope);
-
-    bind(Object.class)
-        .annotatedWith(ReceiverInstance.class)
-        .toProvider(decoratorScope.<Object> provider())
-        .in(decoratorScope);
-
-    bind(ReceiverTarget.class)
-        .toProvider(decoratorScope.<ReceiverTarget> provider())
         .in(decoratorScope);
 
     bind(new TypeLiteral<Callable<Object>>() {})

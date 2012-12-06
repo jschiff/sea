@@ -1,4 +1,5 @@
 package com.getperka.sea.inject;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -19,39 +20,61 @@ package com.getperka.sea.inject;
  * #L%
  */
 
+import java.util.Map;
+
+import com.google.inject.Key;
 import com.google.inject.Provider;
 import com.google.inject.Scope;
 
 abstract class BaseScope implements Scope {
-
-  static class DummyProvider implements Provider<Object> {
-    static final DummyProvider INSTANCE = new DummyProvider();
-
+  class DummyProvider<T> implements Provider<T> {
     @Override
-    public Object get() {
-      throw new IllegalStateException("Not in an EventScope");
+    public T get() {
+      throw new IllegalStateException("Not in " + BaseScope.this.getClass().getSimpleName());
     }
   }
 
-  static class ThreadLocalProvider<T> implements Provider<T> {
-    private final ThreadLocal<? extends T> local;
+  static abstract class MapProvider<T> implements Provider<T> {
+    private final Key<?> key;
+    private final Provider<T> unscoped;
 
-    public ThreadLocalProvider(ThreadLocal<? extends T> local) {
-      this.local = local;
+    public MapProvider(Key<?> key, Provider<T> unscoped) {
+      this.key = key;
+      this.unscoped = unscoped;
     }
 
     @Override
     public T get() {
-      return local.get();
+      Map<Key<?>, Object> map = scopeMap();
+      Object toReturn = map.get(key);
+      if (toReturn == null) {
+        toReturn = unscoped.get();
+        if (toReturn == null) {
+          toReturn = NULL;
+        }
+        map.put(key, toReturn);
+      }
+      @SuppressWarnings("unchecked")
+      T toReturnT = toReturn == NULL ? null : (T) toReturn;
+      return toReturnT;
     }
+
+    protected abstract Map<Key<?>, Object> scopeMap();
   }
+
+  private final DummyProvider<Object> dummyProvider = new DummyProvider<Object>();
+
+  protected static final Object NULL = new Object();
 
   @SuppressWarnings("unchecked")
   protected <T> Provider<T> cast(Provider<?> provider) {
     return (Provider<T>) provider;
   }
 
+  /**
+   * Returns a dummy Provider instance that throws an exception when called.
+   */
   protected <T> Provider<T> provider() {
-    return cast(DummyProvider.INSTANCE);
+    return cast(dummyProvider);
   }
 }

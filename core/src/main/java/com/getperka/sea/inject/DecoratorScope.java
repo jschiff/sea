@@ -24,90 +24,44 @@ import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
-import com.getperka.sea.Event;
-import com.getperka.sea.ext.ReceiverTarget;
+import com.getperka.sea.ext.EventDecorator;
 import com.google.inject.Key;
 import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
 
+/**
+ * Defines a scope whose lifetime is a call to {@link EventDecorator#wrap}.
+ */
 public class DecoratorScope extends BaseScope {
+  private final ThreadLocal<Map<Key<?>, Object>> map = new ThreadLocal<Map<Key<?>, Object>>();
 
-  private final ThreadLocal<Annotation> annotation = new ThreadLocal<Annotation>();
-  private final ThreadLocal<Event> event = new ThreadLocal<Event>();
-  private final ThreadLocal<Object> receiverInstance = new ThreadLocal<Object>();
-  private final ThreadLocal<ReceiverTarget> target = new ThreadLocal<ReceiverTarget>();
-  private final ThreadLocal<AtomicBoolean> wasDispatched = new ThreadLocal<AtomicBoolean>();
-  private final ThreadLocal<AtomicReference<Object>> wasReturned = new ThreadLocal<AtomicReference<Object>>();
-  private final ThreadLocal<AtomicReference<Throwable>> wasThrown = new ThreadLocal<AtomicReference<Throwable>>();
-  private final ThreadLocal<Callable<Object>> work = new ThreadLocal<Callable<Object>>();
-  private final Map<Key<?>, ThreadLocal<?>> map = new HashMap<Key<?>, ThreadLocal<?>>();
-
-  DecoratorScope() {
-    map.put(Key.get(Annotation.class), annotation);
-    map.put(Key.get(AtomicBoolean.class, WasDispatched.class), wasDispatched);
-    map.put(Key.get(new TypeLiteral<AtomicReference<Object>>() {}, WasReturned.class), wasReturned);
-    map.put(Key.get(new TypeLiteral<AtomicReference<Throwable>>() {}, WasThrown.class), wasThrown);
-    map.put(Key.get(Event.class), event);
-    map.put(Key.get(Object.class, ReceiverInstance.class), receiverInstance);
-    map.put(Key.get(ReceiverTarget.class), target);
-    map.put(Key.get(new TypeLiteral<Callable<Object>>() {}), work);
+  public void enter(Annotation annotation, Callable<Object> work) {
+    Map<Key<?>, Object> localMap = map.get();
+    if (localMap != null) {
+      throw new IllegalStateException("DecoratorScope is not reentrant");
+    }
+    localMap = new HashMap<Key<?>, Object>();
+    map.set(localMap);
+    localMap.put(Key.get(Annotation.class), annotation);
+    localMap.put(Key.get(new TypeLiteral<Callable<Object>>() {}), work);
   }
 
   public void exit() {
-    for (ThreadLocal<?> local : map.values()) {
-      local.remove();
-    }
+    map.remove();
   }
 
   @Override
   public <T> Provider<T> scope(Key<T> key, Provider<T> unscoped) {
-    ThreadLocal<?> local = map.get(key);
-    if (local != null) {
-      return cast(new ThreadLocalProvider<Object>(local));
-    }
-    return unscoped;
-  }
-
-  public DecoratorScope withAnnotation(Annotation annotation) {
-    this.annotation.set(annotation);
-    return this;
-  }
-
-  public DecoratorScope withEvent(Event event) {
-    this.event.set(event);
-    return this;
-  }
-
-  public DecoratorScope withReceiverInstance(Object provider) {
-    this.receiverInstance.set(provider);
-    return this;
-  }
-
-  public DecoratorScope withTarget(ReceiverTarget target) {
-    this.target.set(target);
-    return this;
-  }
-
-  public DecoratorScope withWasDispatched(AtomicBoolean wasDispatched) {
-    this.wasDispatched.set(wasDispatched);
-    return this;
-  }
-
-  public DecoratorScope withWasReturned(AtomicReference<Object> wasReturned) {
-    this.wasReturned.set(wasReturned);
-    return this;
-  }
-
-  public DecoratorScope withWasThrown(AtomicReference<Throwable> wasThrown) {
-    this.wasThrown.set(wasThrown);
-    return this;
-  }
-
-  public DecoratorScope withWork(Callable<Object> work) {
-    this.work.set(work);
-    return this;
+    return new MapProvider<T>(key, unscoped) {
+      @Override
+      protected Map<Key<?>, Object> scopeMap() {
+        Map<Key<?>, Object> localMap = map.get();
+        if (localMap == null) {
+          throw new IllegalStateException("Not in a DecoratorScope");
+        }
+        return localMap;
+      }
+    };
   }
 }

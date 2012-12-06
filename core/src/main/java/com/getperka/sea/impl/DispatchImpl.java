@@ -21,6 +21,7 @@ package com.getperka.sea.impl;
  */
 
 import java.lang.reflect.AnnotatedElement;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -29,11 +30,15 @@ import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
 
+import org.slf4j.Logger;
+
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.Registration;
+import com.getperka.sea.ext.DispatchCompleteEvent;
+import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.EventExecutor;
-import com.getperka.sea.inject.EventScope;
+import com.getperka.sea.inject.EventLogger;
 import com.getperka.sea.inject.GlobalDecorators;
 import com.google.inject.Injector;
 
@@ -42,9 +47,9 @@ public class DispatchImpl implements EventDispatch, HasInjector {
 
   private Collection<AnnotatedElement> globalDecorators;
   private Injector injector;
-  private Provider<List<Invocation>> invocations;
+  private Provider<Invocation> invocations;
+  private Logger logger;
   private DispatchMap map;
-  private EventScope scope;
   private ExecutorService service;
   private volatile boolean shutdown;
 
@@ -60,13 +65,9 @@ public class DispatchImpl implements EventDispatch, HasInjector {
     if (shutdown || event == null) {
       return;
     }
-    scope.enter(event);
-    try {
-      for (Invocation invocation : invocations.get()) {
-        service.submit(invocation);
-      }
-    } finally {
-      scope.exit();
+    List<Invocation> allInvocation = getInvocations(event);
+    for (Invocation invocation : allInvocation) {
+      service.submit(invocation);
     }
   }
 
@@ -96,15 +97,44 @@ public class DispatchImpl implements EventDispatch, HasInjector {
     service.shutdown();
   }
 
+  List<Invocation> getInvocations(Event event) {
+    Class<? extends Event> eventClass = event.getClass();
+    List<ReceiverTarget> targets = map.getTargets(eventClass);
+    List<Invocation> toReturn = new ArrayList<Invocation>();
+
+    // Fire an empty DispatchComplete if there are no receivers
+    if (targets.isEmpty() && !(event instanceof DispatchCompleteEvent)) {
+      logger.debug("No @Receiver methods that accept {} have been registered",
+          eventClass.getName());
+
+      DispatchCompleteEvent complete = new DispatchCompleteEvent();
+      complete.setSource(event);
+      fire(complete);
+      return toReturn;
+    }
+
+    Invocation.State state = new Invocation.State(targets.size());
+
+    for (ReceiverTarget target : targets) {
+      Invocation invocation = invocations.get();
+      invocation.setEvent(event);
+      invocation.setInvocation(target);
+      invocation.setState(state);
+      toReturn.add(invocation);
+    }
+
+    return toReturn;
+  }
+
   @Inject
   void inject(@GlobalDecorators Collection<AnnotatedElement> globalDecorators,
-      Injector injector, Provider<List<Invocation>> invocations, EventScope scope,
+      Injector injector, Provider<Invocation> invocations, @EventLogger Logger logger,
       DispatchMap map, @EventExecutor ExecutorService service) {
     this.globalDecorators = globalDecorators;
     this.injector = injector;
     this.invocations = invocations;
+    this.logger = logger;
     this.map = map;
-    this.scope = scope;
     this.service = service;
   }
 }

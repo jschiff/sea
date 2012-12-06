@@ -94,7 +94,7 @@ public interface EventDecorator<A extends Annotation, E extends Event> {
    * This interface may be subject to expansion in the future.
    * 
    * @param <A> the annotation type used to bind instances of the EventDecorator
-   * @param <E> the expected event type
+   * @param <E> the expected event or event facet type
    */
   public interface Context<A extends Annotation, E extends Event> {
     /**
@@ -116,7 +116,7 @@ public interface EventDecorator<A extends Annotation, E extends Event> {
 
     /**
      * Returns the instance the {@link Receiver} method is being invoked upon. If the method being
-     * invoked is static, this method will return an arbitrary object.
+     * invoked is static, this method will return {@code null}.
      */
     Object getReceiverInstance();
 

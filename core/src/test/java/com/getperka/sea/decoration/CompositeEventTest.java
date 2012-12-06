@@ -23,6 +23,8 @@ package com.getperka.sea.decoration;
 import static com.getperka.sea.TestConstants.testDelay;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.annotation.Retention;
@@ -34,6 +36,7 @@ import org.junit.Test;
 
 import com.getperka.sea.BaseCompositeEvent;
 import com.getperka.sea.BaseCompositeEvent.DefaultFacets;
+import com.getperka.sea.CompositeEvent;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.EventDispatchers;
@@ -92,6 +95,8 @@ public class CompositeEventTest {
     }
   }
 
+  interface RandomEvent extends Event {};
+
   @Test(timeout = testDelay)
   public void test() throws InterruptedException {
     EventDispatch d = EventDispatchers.create();
@@ -104,5 +109,7 @@ public class CompositeEventTest {
 
     assertTrue(evt.asEventFacet(FooEvent.class).foo);
     assertTrue(evt.asEventFacet(BarEvent.class).bar);
+    assertNull(evt.asEventFacet(RandomEvent.class));
+    assertSame(evt, evt.asEventFacet(CompositeEvent.class));
   }
 }

@@ -29,6 +29,10 @@ import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import javax.inject.Inject;
+
+import com.google.inject.Injector;
+
 /**
  * A utility base class for implementing {@link CompositeEvent} types.
  * <p>
@@ -48,27 +52,9 @@ public class BaseCompositeEvent implements CompositeEvent {
     Class<? extends Event>[] value();
   }
 
-  private Collection<Event> facets = new ArrayList<Event>();
-
-  /**
-   * This constructor will attempt to evaluate any {@link DefaultFacets} annotation that exists on
-   * the concrete type.
-   */
-  public BaseCompositeEvent() {
-    DefaultFacets defaults = getClass().getAnnotation(DefaultFacets.class);
-    if (defaults != null) {
-      for (Class<? extends Event> clazz : defaults.value()) {
-        try {
-          addEventFacet(clazz.newInstance());
-        } catch (IllegalAccessException e) {
-          throw new RuntimeException("The type " + clazz.getName()
-            + " does not have a public, no-arg constructor", e);
-        } catch (InstantiationException e) {
-          throw new RuntimeException("Could not construct an instance of " + clazz.getName(), e);
-        }
-      }
-    }
-  }
+  private Collection<Event> facets;
+  @Inject
+  private Injector injector;
 
   /**
    * Examines the event and its collection of facets and returns the first one assignable to the
@@ -79,7 +65,7 @@ public class BaseCompositeEvent implements CompositeEvent {
     if (eventType.isInstance(this)) {
       return eventType.cast(this);
     }
-    for (Event evt : facets) {
+    for (Event evt : getEventFacets()) {
       if (eventType.isInstance(evt)) {
         return eventType.cast(evt);
       }
@@ -88,7 +74,31 @@ public class BaseCompositeEvent implements CompositeEvent {
   }
 
   @Override
-  public Collection<? extends Event> getEventFacets() {
+  public synchronized Collection<Event> getEventFacets() {
+    if (facets == null) {
+      facets = new ArrayList<Event>();
+
+      DefaultFacets defaults = getClass().getAnnotation(DefaultFacets.class);
+      if (defaults != null) {
+        for (Class<? extends Event> clazz : defaults.value()) {
+          Event facet;
+
+          if (injector == null) {
+            try {
+              facet = clazz.newInstance();
+            } catch (IllegalAccessException e) {
+              throw new RuntimeException("The type " + clazz.getName()
+                + " does not have a public, no-arg constructor", e);
+            } catch (InstantiationException e) {
+              throw new RuntimeException("Could not construct an instance of " + clazz.getName(), e);
+            }
+          } else {
+            facet = injector.getInstance(clazz);
+          }
+          facets.add(facet);
+        }
+      }
+    }
     return facets;
   }
 
@@ -96,6 +106,6 @@ public class BaseCompositeEvent implements CompositeEvent {
    * Adds an Event facet.
    */
   protected void addEventFacet(Event facet) {
-    facets.add(facet);
+    getEventFacets().add(facet);
   }
 }
