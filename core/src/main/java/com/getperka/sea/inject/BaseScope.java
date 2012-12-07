@@ -26,15 +26,8 @@ import com.google.inject.Key;
 import com.google.inject.Provider;
 import com.google.inject.Scope;
 
-abstract class BaseScope implements Scope {
-  class DummyProvider<T> implements Provider<T> {
-    @Override
-    public T get() {
-      throw new IllegalStateException("Not in " + BaseScope.this.getClass().getSimpleName());
-    }
-  }
-
-  static abstract class MapProvider<T> implements Provider<T> {
+public abstract class BaseScope implements Scope {
+  protected static abstract class MapProvider<T> implements Provider<T> {
     private final Key<?> key;
     private final Provider<T> unscoped;
 
@@ -62,19 +55,26 @@ abstract class BaseScope implements Scope {
     protected abstract Map<Key<?>, Object> scopeMap();
   }
 
+  class DummyProvider<T> implements Provider<T> {
+    @Override
+    public T get() {
+      throw new IllegalStateException("Not in " + BaseScope.this.getClass().getSimpleName());
+    }
+  }
+
   private final DummyProvider<Object> dummyProvider = new DummyProvider<Object>();
 
   protected static final Object NULL = new Object();
 
-  @SuppressWarnings("unchecked")
-  protected <T> Provider<T> cast(Provider<?> provider) {
-    return (Provider<T>) provider;
-  }
-
   /**
    * Returns a dummy Provider instance that throws an exception when called.
    */
-  protected <T> Provider<T> provider() {
+  public <T> Provider<T> provider() {
     return cast(dummyProvider);
+  }
+
+  @SuppressWarnings("unchecked")
+  protected <T> Provider<T> cast(Provider<?> provider) {
+    return (Provider<T>) provider;
   }
 }

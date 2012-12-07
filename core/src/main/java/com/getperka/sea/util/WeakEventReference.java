@@ -1,4 +1,5 @@
-package com.getperka.sea.jms.impl;
+package com.getperka.sea.util;
+
 /*
  * #%L
  * Simple Event Architecture - JMS Support
@@ -22,20 +23,27 @@ package com.getperka.sea.jms.impl;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 
+import javax.inject.Provider;
+
 import com.getperka.sea.Event;
 
 /**
- * A stand-off for an Event that maintain object identity.
+ * A weak reference to an Event. This class implements equality behavior based on the underlying
+ * identity of the Event. It is suitable for use as a map key even after the underlying event has
+ * been garbage-collected.
  */
-public class EventReference {
-  private final WeakReference<Event> evt;
+public class WeakEventReference<E extends Event> extends WeakReference<E> implements Provider<E> {
   private final int hashCode;
 
-  public EventReference(Event evt, ReferenceQueue<? super Event> queue) {
+  public WeakEventReference(E evt) {
+    this(evt, null);
+  }
+
+  public WeakEventReference(E evt, ReferenceQueue<? super E> queue) {
+    super(evt, queue);
     if (evt == null) {
-      throw new IllegalArgumentException("Null event");
+      throw new IllegalArgumentException("Cannot reference a null event");
     }
-    this.evt = new WeakReference<Event>(evt, queue);
     this.hashCode = System.identityHashCode(evt);
   }
 
@@ -44,12 +52,12 @@ public class EventReference {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof EventReference)) {
+    if (!(o instanceof WeakEventReference)) {
       return false;
     }
-    EventReference other = (EventReference) o;
-    Event myEvent = evt.get();
-    return myEvent != null && myEvent == other.evt.get();
+    WeakEventReference<?> other = (WeakEventReference<?>) o;
+    E myEvent = get();
+    return myEvent != null && myEvent == other.get();
   }
 
   @Override

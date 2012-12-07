@@ -32,6 +32,7 @@ import javax.inject.Provider;
 import javax.inject.Singleton;
 
 import com.getperka.sea.Event;
+import com.getperka.sea.util.WeakEventReference;
 
 /**
  * Manages a mapping between {@link Event} and {@link EventMetadata} instances.
@@ -39,8 +40,8 @@ import com.getperka.sea.Event;
 @Singleton
 public class EventMetadataMap {
   private final Lock cleanupLock = new ReentrantLock();
-  private final ConcurrentMap<EventReference, EventMetadata> map =
-      new ConcurrentHashMap<EventReference, EventMetadata>();
+  private final ConcurrentMap<WeakEventReference<?>, EventMetadata> map =
+      new ConcurrentHashMap<WeakEventReference<?>, EventMetadata>();
   private Provider<EventMetadata> metadata;
   private final ReferenceQueue<Event> staleEventReferences = new ReferenceQueue<Event>();
 
@@ -48,13 +49,13 @@ public class EventMetadataMap {
 
   public EventMetadata get(Event event) {
     cleanup();
-    EventMetadata toReturn = map.get(new EventReference(event, null));
+    EventMetadata toReturn = map.get(new WeakEventReference<Event>(event, null));
     if (toReturn != null) {
       return toReturn;
     }
     toReturn = metadata.get();
-    EventMetadata existing = map.putIfAbsent(new EventReference(event, staleEventReferences),
-        toReturn);
+    EventMetadata existing = map.putIfAbsent(new WeakEventReference<Event>(event,
+        staleEventReferences), toReturn);
     return existing == null ? toReturn : existing;
   }
 

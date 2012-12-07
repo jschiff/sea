@@ -77,7 +77,7 @@ public class EventModule extends PrivateModule {
     // Choose a reasonable default for the thread pool
     bind(ExecutorService.class)
         .annotatedWith(EventExecutor.class)
-        .toInstance(Executors.newCachedThreadPool(new MyFactory()));
+        .toInstance(executorService());
 
     bind(new TypeLiteral<Collection<AnnotatedElement>>() {})
         .annotatedWith(GlobalDecorators.class)
@@ -92,6 +92,13 @@ public class EventModule extends PrivateModule {
 
     bind(SettableReceiverTarget.class).to(ReceiverTargetImpl.class);
     bind(SettableRegistration.class).to(SettableRegistrationImpl.class);
+  }
+
+  /**
+   * Create or return an {@link ExecutorService} for executing events on.
+   */
+  protected ExecutorService executorService() {
+    return Executors.newCachedThreadPool(new MyFactory());
   }
 
   private void bindEventScope() {

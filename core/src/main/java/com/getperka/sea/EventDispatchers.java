@@ -20,6 +20,8 @@ package com.getperka.sea;
  * #L%
  */
 
+import java.util.concurrent.ExecutorService;
+
 import com.getperka.sea.inject.EventModule;
 import com.google.inject.Guice;
 
@@ -32,6 +34,19 @@ public class EventDispatchers {
    */
   public static EventDispatch create() {
     return Guice.createInjector(new EventModule()).getInstance(EventDispatch.class);
+  }
+
+  /**
+   * Instantiates a new {@link EventDispatch} instance that uses the provided
+   * {@link ExecutorService} for scheduling executions.
+   */
+  public static EventDispatch create(final ExecutorService svc) {
+    return Guice.createInjector(new EventModule() {
+      @Override
+      protected ExecutorService executorService() {
+        return svc;
+      }
+    }).getInstance(EventDispatch.class);
   }
 
   private EventDispatchers() {}

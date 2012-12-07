@@ -1,4 +1,5 @@
-package com.getperka.sea.jms.impl;
+package com.getperka.sea.util;
+
 /*
  * #%L
  * Simple Event Architecture - JMS Support
@@ -18,7 +19,6 @@ package com.getperka.sea.jms.impl;
  * limitations under the License.
  * #L%
  */
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -26,22 +26,24 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
+import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
+import java.util.Arrays;
 
 import org.junit.Test;
 
 import com.getperka.sea.Event;
 
-public class EventReferenceTest {
+public class WeakEventReferenceTest {
 
   @Test
   public void testEquality() {
     Event event = new Event() {};
     Event event2 = new Event() {};
 
-    EventReference refA = new EventReference(event, null);
-    EventReference refB = new EventReference(event, null);
-    EventReference ref2 = new EventReference(event2, null);
+    WeakEventReference<Event> refA = new WeakEventReference<Event>(event);
+    WeakEventReference<Event> refB = new WeakEventReference<Event>(event);
+    WeakEventReference<Event> ref2 = new WeakEventReference<Event>(event2);
 
     checkEquals(refA, refA);
     checkEquals(refA, refB);
@@ -56,8 +58,9 @@ public class EventReferenceTest {
     Event event = new Event() {};
     WeakReference<Event> ref = new WeakReference<Event>(event);
 
-    EventReference refA = new EventReference(event, null);
-    EventReference refB = new EventReference(event, null);
+    ReferenceQueue<Object> queue = new ReferenceQueue<Object>();
+    WeakEventReference<Event> refA = new WeakEventReference<Event>(event, queue);
+    WeakEventReference<Event> refB = new WeakEventReference<Event>(event, queue);
 
     // See if we can get the garbage collector to play along
     assertNotNull(ref.get());
@@ -66,7 +69,7 @@ public class EventReferenceTest {
 
     // May skip the rest of the test
     assumeTrue(ref.get() == null);
-
+    assertTrue(Arrays.<Object> asList(refA, refB).contains(queue.poll()));
     checkEquals(refA, refA);
     assertFalse(refA.equals(refB));
   }
@@ -74,12 +77,12 @@ public class EventReferenceTest {
   @Test
   public void testNull() {
     try {
-      new EventReference(null, null);
+      new WeakEventReference<Event>(null);
       fail();
     } catch (IllegalArgumentException expected) {}
   }
 
-  private void checkEquals(EventReference a, EventReference b) {
+  private void checkEquals(WeakEventReference<Event> a, WeakEventReference<Event> b) {
     assertEquals(a.hashCode(), b.hashCode());
     assertTrue(a.equals(b));
     assertTrue(b.equals(a));
