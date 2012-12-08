@@ -1,4 +1,5 @@
 package com.getperka.sea.decoration;
+
 /*
  * #%L
  * Simple Event Architecture - Core
@@ -26,7 +27,6 @@ import static org.junit.Assert.assertTrue;
 import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.junit.Test;
@@ -36,7 +36,9 @@ import com.getperka.sea.EventDispatch;
 import com.getperka.sea.EventDispatchers;
 import com.getperka.sea.Receiver;
 import com.getperka.sea.TestConstants;
+import com.getperka.sea.ext.DispatchCompleteEvent;
 import com.getperka.sea.impl.HasInjector;
+import com.getperka.sea.util.EventLatch;
 
 public class ExclusiveTest {
 
@@ -68,7 +70,6 @@ public class ExclusiveTest {
           assertFalse(lock.hasQueuedThreads());
         }
         queue.add(name);
-        latch.countDown();
       }
     }
   }
@@ -76,17 +77,18 @@ public class ExclusiveTest {
   private static class MyEvent implements Event {}
 
   private ExclusiveFilter filter;
-  private final CountDownLatch latch = new CountDownLatch(3);
   private final Queue<String> queue = new ConcurrentLinkedQueue<String>();
 
   @Test(timeout = TestConstants.testDelay)
-  public void test() throws InterruptedException {
+  public void test() {
     EventDispatch dispatch = EventDispatchers.create();
     filter = ((HasInjector) dispatch).getInjector().getInstance(ExclusiveFilter.class);
 
     SleepyReceiver a = new SleepyReceiver("a");
     SleepyReceiver b = new SleepyReceiver("b");
     SleepyReceiver c = new SleepyReceiver("c");
+    EventLatch<DispatchCompleteEvent> latch = EventLatch.create(dispatch,
+        DispatchCompleteEvent.class, 1);
 
     dispatch.register(a);
     dispatch.register(b);
@@ -94,7 +96,7 @@ public class ExclusiveTest {
 
     MyEvent event = new MyEvent();
     dispatch.fire(event);
-    latch.await();
+    latch.awaitUninterruptibly();
 
     assertEquals(6, queue.size());
 

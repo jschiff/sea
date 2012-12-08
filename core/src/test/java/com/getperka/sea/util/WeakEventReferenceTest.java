@@ -69,9 +69,10 @@ public class WeakEventReferenceTest {
 
     // May skip the rest of the test
     assumeTrue(ref.get() == null);
-    assertTrue(Arrays.<Object> asList(refA, refB).contains(queue.poll()));
     checkEquals(refA, refA);
     assertFalse(refA.equals(refB));
+    // Depends on GC behavior
+    assumeTrue(Arrays.<Object> asList(refA, refB).contains(queue.poll()));
   }
 
   @Test
