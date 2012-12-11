@@ -31,6 +31,8 @@ import javax.jms.Message;
 import javax.jms.Queue;
 import javax.jms.Topic;
 
+import com.getperka.sea.jms.decorator.SuppressLocalEvents;
+
 /**
  * Controls options related to Event routing.
  * 
@@ -61,6 +63,18 @@ public @interface SubscriptionOptions {
    * @see Message
    */
   String messageSelector() default "";
+
+  /**
+   * By default, any JMS messages that are published by an EventSubscriber will not be received by
+   * that subscriber. This prevents an "echo effect" where an event is received locally via direct
+   * event dispatch and again from the subscriber receiving the JMS message it just sent. This is
+   * only a concern if a local receiver exists for remote event types.
+   * <p>
+   * By setting this property to {@code false} and using a {@link SuppressLocalEvents} filter, all
+   * direct dispatches can be disabled, instead requiring local event receivers to be driven by the
+   * EventSubscriber from messages in the JMS destination.
+   */
+  boolean preventEchoEffect() default true;
 
   /**
    * An event's return mode determines how the event is routed if it is re-fired after being

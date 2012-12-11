@@ -43,16 +43,28 @@ public class ReceiverScope extends BaseScope {
   private static class Frame {
     final Map<Key<?>, Object> values = new ConcurrentHashMap<Key<?>, Object>();
 
-    Frame(Event event, ReceiverTarget receiverTarget) {
-      values.put(Key.get(Event.class, CurrentEvent.class), event);
-      values.put(Key.get(ReceiverTarget.class), receiverTarget);
-      values.put(Key.get(AtomicBoolean.class, WasDispatched.class), new AtomicBoolean());
-      values.put(Key.get(new TypeLiteral<AtomicReference<Object>>() {}, WasReturned.class),
-          new AtomicReference<Object>());
-      values.put(Key.get(new TypeLiteral<AtomicReference<Throwable>>() {}, WasThrown.class),
-          new AtomicReference<Object>());
+    Frame(Event event, ReceiverTarget receiverTarget, Object context) {
+      values.put(currentEventKey, event);
+      values.put(eventContextKey, context == null ? NULL : context);
+      values.put(receiverTargetKey, receiverTarget);
+      values.put(wasDispatchedKey, new AtomicBoolean());
+      values.put(wasReturnedKey, new AtomicReference<Object>());
+      values.put(wasThrownKey, new AtomicReference<Object>());
     }
   }
+
+  private static final Key<Event> currentEventKey = Key.get(Event.class, CurrentEvent.class);
+  private static final Key<Object> eventContextKey = Key.get(Object.class, EventContext.class);
+  private static final Key<Object> receiverInstanceKey = Key.get(Object.class,
+      ReceiverInstance.class);
+  private static final Key<ReceiverTarget> receiverTargetKey = Key.get(ReceiverTarget.class);
+  private static final Key<AtomicBoolean> wasDispatchedKey = Key.get(AtomicBoolean.class,
+      WasDispatched.class);
+  private static final Key<AtomicReference<Object>> wasReturnedKey = Key.get(
+      new TypeLiteral<AtomicReference<Object>>() {}, WasReturned.class);
+
+  private static final Key<AtomicReference<Throwable>> wasThrownKey = Key.get(
+      new TypeLiteral<AtomicReference<Throwable>>() {}, WasThrown.class);
 
   private final ThreadLocal<Deque<Frame>> frameStack = new ThreadLocal<Deque<Frame>>() {
     @Override
@@ -62,15 +74,15 @@ public class ReceiverScope extends BaseScope {
   };
 
   public void enter(Event event, ReceiverTarget receiverTarget,
-      javax.inject.Provider<?> receiverInstance) {
-    Frame frame = new Frame(event, receiverTarget);
+      javax.inject.Provider<?> receiverInstance, Object context) {
+    Frame frame = new Frame(event, receiverTarget, context);
     frameStack.get().push(frame);
     // Slightly delay instantiation of the receiver instance until the frame is installed
     Object instance = receiverInstance == null ? null : receiverInstance.get();
     if (instance == null) {
       instance = NULL;
     }
-    frame.values.put(Key.get(Object.class, ReceiverInstance.class), instance);
+    frame.values.put(receiverInstanceKey, instance);
   }
 
   public void exit() {

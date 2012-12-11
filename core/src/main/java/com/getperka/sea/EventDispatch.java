@@ -49,25 +49,41 @@ public interface EventDispatch {
    *   }
    * }
    * </pre>
+   * 
+   * Multiple invocations register progressively "more global" decorations.
    */
   void addGlobalDecorator(AnnotatedElement element);
 
   /**
-   * Asynchronously dispatch an {@link Event}. The actual event dispatch will typically occur on a
-   * separate thread.
+   * Asynchronously dispatch an {@link Event}.
+   * 
+   * @param event the Event to dispatch. {@code null} values will be ignored
    */
   void fire(Event event);
 
   /**
+   * Asynchronously dispatch an {@link Event}. This method accepts an optional per-invocation
+   * context object which is passed along to event decorators and may be made available to event
+   * receivers. This context object can be used for any form of signaling, such as event-loop
+   * detection.
+   * 
+   * @param event the Event to dispatch. {@code null} values will be ignored
+   * @param context an arbitrary object to associate with the specific call to {@code fire}
+   * @see EventDecorator.Context#getContext()
+   */
+  void fire(Event event, Object context);
+
+  /**
    * Register a receiver class. Instances of the class will be created on demand for each event the
-   * class receives.
+   * class receives. Only {@link Receiver} methods declared in the class will be registered.
    * 
    * @throws BadReceiverException if an unsatisfactory {@code @Receiver} declaration is encountered
    */
   Registration register(Class<?> receiver) throws BadReceiverException;
 
   /**
-   * Register a receiver class, using the given Provider to instantiate the instances.
+   * Register a receiver class, using the given Provider to instantiate the instances. Only
+   * {@link Receiver} methods declared in the class will be registered.
    * 
    * @throws BadReceiverException if an unsatisfactory {@code @Receiver} declaration is encountered
    */
@@ -75,7 +91,8 @@ public interface EventDispatch {
       throws BadReceiverException;
 
   /**
-   * Register a singleton receiver.
+   * Register a singleton receiver. Only {@link Receiver} methods declared in the object's class
+   * will be registered.
    * 
    * @throws BadReceiverException if an unsatisfactory {@code @Receiver} declaration is encountered
    */

@@ -1,4 +1,5 @@
 package com.getperka.sea.jms.impl;
+
 /*
  * #%L
  * Simple Event Architecture - JMS Support
@@ -36,6 +37,7 @@ import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.Receiver;
 import com.getperka.sea.Registration;
+import com.getperka.sea.inject.EventContext;
 import com.getperka.sea.inject.EventLogger;
 import com.getperka.sea.jms.EventSubscription;
 import com.getperka.sea.jms.EventTransport;
@@ -88,8 +90,8 @@ public class EventSubscriptionImpl implements EventSubscription, MessageListener
         logger.error("Unable to determine reply-to information. " +
           "This event may be lost if re-fired.", e);
       }
-      meta.setSquelched(true);
-      dispatch.fire(event);
+      // Pass this as the dispatch context to detect send-loops in maybeSendToJms
+      dispatch.fire(event, this);
     } catch (EventTransportException e) {
       logger.error("Unable to dispatch incoming JMS message", e);
     }
@@ -119,7 +121,15 @@ public class EventSubscriptionImpl implements EventSubscription, MessageListener
   }
 
   @Receiver
-  void maybeSendToJms(Event event) {
+  void maybeSendToJms(Event event, @EventContext Object context) {
+    // TODO: Subscribe to subclasses?
+    if (!eventType.equals(event.getClass())) {
+      return;
+    }
+    // Avoid send-loops
+    if (this.equals(context)) {
+      return;
+    }
     try {
       MessageProducer producer = getTargetProducer(event);
       if (producer != null) {
@@ -145,9 +155,6 @@ public class EventSubscriptionImpl implements EventSubscription, MessageListener
   private MessageProducer getTargetProducer(Event event) throws JMSException {
     // Prevent event instances dispatched from the subscriber from being immediately re-broadcast
     EventMetadata meta = eventMetadata.get(event);
-    if (meta.isSquelched()) {
-      return null;
-    }
 
     // Events being re-fired may need to be routed to specific locations
     if (honorReplyTo) {

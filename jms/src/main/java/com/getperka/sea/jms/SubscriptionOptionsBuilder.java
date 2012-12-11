@@ -79,6 +79,9 @@ public class SubscriptionOptionsBuilder {
       if (toReturn == null) {
         return m.getDefaultValue();
       }
+      if (boolean.class.equals(m.getReturnType())) {
+        return Boolean.TRUE.equals(toReturn);
+      }
       // Add a cast so if there's bad data in the map, the CCE will occur someplace that makes sense
       return m.getReturnType().cast(toReturn);
     }
@@ -140,6 +143,11 @@ public class SubscriptionOptionsBuilder {
 
   public SubscriptionOptionsBuilder messageSelector(String selector) {
     values.put("messageSelector", selector);
+    return this;
+  }
+
+  public SubscriptionOptionsBuilder preventEchoEffect(boolean prevent) {
+    values.put("preventEchoEffect", prevent);
     return this;
   }
 

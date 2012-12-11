@@ -27,7 +27,6 @@ import javax.jms.Destination;
  */
 public class EventMetadata {
 
-  private boolean isSquelched;
   private Destination replyTo;
 
   protected EventMetadata() {}
@@ -36,22 +35,7 @@ public class EventMetadata {
     return replyTo;
   }
 
-  /**
-   * Only returns {@code true} once.
-   */
-  public boolean isSquelched() {
-    if (isSquelched) {
-      isSquelched = false;
-      return true;
-    }
-    return false;
-  }
-
   public void setReplyTo(Destination replyTo) {
     this.replyTo = replyTo;
-  }
-
-  public void setSquelched(boolean isSquelched) {
-    this.isSquelched = isSquelched;
   }
 }

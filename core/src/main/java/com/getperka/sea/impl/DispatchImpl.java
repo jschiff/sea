@@ -62,10 +62,15 @@ public class DispatchImpl implements EventDispatch, HasInjector {
 
   @Override
   public void fire(Event event) {
+    fire(event, null);
+  }
+
+  @Override
+  public void fire(Event event, Object context) {
     if (shutdown || event == null) {
       return;
     }
-    List<Invocation> allInvocation = getInvocations(event);
+    List<Invocation> allInvocation = getInvocations(event, context);
     for (Invocation invocation : allInvocation) {
       service.submit(invocation);
     }
@@ -97,7 +102,7 @@ public class DispatchImpl implements EventDispatch, HasInjector {
     service.shutdown();
   }
 
-  List<Invocation> getInvocations(Event event) {
+  List<Invocation> getInvocations(Event event, Object context) {
     Class<? extends Event> eventClass = event.getClass();
     List<ReceiverTarget> targets = map.getTargets(eventClass);
     List<Invocation> toReturn = new ArrayList<Invocation>();
@@ -117,6 +122,7 @@ public class DispatchImpl implements EventDispatch, HasInjector {
 
     for (ReceiverTarget target : targets) {
       Invocation invocation = invocations.get();
+      invocation.setContext(context);
       invocation.setEvent(event);
       invocation.setInvocation(target);
       invocation.setState(state);

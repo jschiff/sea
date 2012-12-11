@@ -64,6 +64,7 @@ public class EventSmokeTest {
     @Override
     public Callable<Object> wrap(final Context<NeedsDecoration, MyEvent> ctx) {
       assertNotNull(ctx.getAnnotation());
+      assertEquals(CONTEXT_VALUE, ctx.getContext());
       assertNotNull(ctx.getEvent());
       assertNotNull(ctx.getWork());
       return new Callable<Object>() {
@@ -152,6 +153,8 @@ public class EventSmokeTest {
 
   private static class MyEvent implements Event {}
 
+  private static final String CONTEXT_VALUE = "Hello Context!";
+
   private static volatile boolean decoratorCalled;
   private static final Queue<Event> received = new ConcurrentLinkedQueue<Event>();
   private static volatile CountDownLatch latch;
@@ -201,7 +204,7 @@ public class EventSmokeTest {
     latch = new CountDownLatch(5);
     dispatch.register(InstanceReceiver.class);
     for (long i = 0, j = latch.getCount(); i < j; i++) {
-      dispatch.fire(new MyEvent());
+      dispatch.fire(new MyEvent(), CONTEXT_VALUE);
     }
     latch.await();
     assertEquals(5, received.size());
@@ -214,7 +217,7 @@ public class EventSmokeTest {
     dispatch.register(StaticReceiver.class);
     dispatch.register(BuggyReceiver.class);
     for (long i = 0, j = 5; i < j; i++) {
-      dispatch.fire(new MyEvent());
+      dispatch.fire(new MyEvent(), CONTEXT_VALUE);
     }
     latch.await();
     assertEquals(10, received.size());
@@ -287,7 +290,7 @@ public class EventSmokeTest {
   private void test(Event event, int count) throws InterruptedException {
     latch = new CountDownLatch(count);
 
-    dispatch.fire(event);
+    dispatch.fire(event, CONTEXT_VALUE);
     latch.await();
     assertEquals(count, received.size());
     while (!received.isEmpty()) {

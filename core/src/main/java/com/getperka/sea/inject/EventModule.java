@@ -62,17 +62,14 @@ public class EventModule extends AbstractModule {
 
   @Override
   protected void configure() {
-    bindEventScope();
     bindReceiverScope();
+    bindDecoratorScope();
 
     bind(DispatchMap.class).asEagerSingleton();
 
     bind(DispatchResult.class).to(DispatchResultImpl.class);
 
-    // expose(Event.class).annotatedWith(CurrentEvent.class);
-
     bind(EventDispatch.class).to(DispatchImpl.class);
-    // expose(EventDispatch.class);
 
     // Choose a reasonable default for the thread pool
     bind(ExecutorService.class)
@@ -88,7 +85,6 @@ public class EventModule extends AbstractModule {
     bind(Logger.class)
         .annotatedWith(EventLogger.class)
         .toInstance(LoggerFactory.getLogger(EventDispatch.class));
-    // expose(Logger.class).annotatedWith(EventLogger.class);
 
     bind(SettableReceiverTarget.class).to(ReceiverTargetImpl.class);
     bind(SettableRegistration.class).to(SettableRegistrationImpl.class);
@@ -101,37 +97,7 @@ public class EventModule extends AbstractModule {
     return Executors.newCachedThreadPool(new MyFactory());
   }
 
-  private void bindEventScope() {
-    ReceiverScope eventScope = new ReceiverScope();
-    bindScope(ReceiverScoped.class, eventScope);
-    bind(ReceiverScope.class).toInstance(eventScope);
-
-    bind(Event.class)
-        .annotatedWith(CurrentEvent.class)
-        .toProvider(eventScope.<Event> provider())
-        .in(eventScope);
-    bind(AtomicBoolean.class)
-        .annotatedWith(WasDispatched.class)
-        .toProvider(eventScope.<AtomicBoolean> provider())
-        .in(eventScope);
-    bind(new TypeLiteral<AtomicReference<Object>>() {})
-        .annotatedWith(WasReturned.class)
-        .toProvider(eventScope.<AtomicReference<Object>> provider())
-        .in(eventScope);
-    bind(new TypeLiteral<AtomicReference<Throwable>>() {})
-        .annotatedWith(WasThrown.class)
-        .toProvider(eventScope.<AtomicReference<Throwable>> provider())
-        .in(eventScope);
-    bind(Object.class)
-        .annotatedWith(ReceiverInstance.class)
-        .toProvider(eventScope.<Object> provider())
-        .in(eventScope);
-    bind(ReceiverTarget.class)
-        .toProvider(eventScope.<ReceiverTarget> provider())
-        .in(eventScope);
-  }
-
-  private void bindReceiverScope() {
+  private void bindDecoratorScope() {
     DecoratorScope decoratorScope = new DecoratorScope();
     bindScope(DecoratorScoped.class, decoratorScope);
     bind(DecoratorScope.class).toInstance(decoratorScope);
@@ -143,5 +109,39 @@ public class EventModule extends AbstractModule {
     bind(new TypeLiteral<Callable<Object>>() {})
         .toProvider(decoratorScope.<Callable<Object>> provider())
         .in(decoratorScope);
+  }
+
+  private void bindReceiverScope() {
+    ReceiverScope scope = new ReceiverScope();
+    bindScope(ReceiverScoped.class, scope);
+    bind(ReceiverScope.class).toInstance(scope);
+
+    bind(Event.class)
+        .annotatedWith(CurrentEvent.class)
+        .toProvider(scope.<Event> provider())
+        .in(scope);
+    bind(Object.class)
+        .annotatedWith(EventContext.class)
+        .toProvider(scope.<Object> provider())
+        .in(scope);
+    bind(AtomicBoolean.class)
+        .annotatedWith(WasDispatched.class)
+        .toProvider(scope.<AtomicBoolean> provider())
+        .in(scope);
+    bind(new TypeLiteral<AtomicReference<Object>>() {})
+        .annotatedWith(WasReturned.class)
+        .toProvider(scope.<AtomicReference<Object>> provider())
+        .in(scope);
+    bind(new TypeLiteral<AtomicReference<Throwable>>() {})
+        .annotatedWith(WasThrown.class)
+        .toProvider(scope.<AtomicReference<Throwable>> provider())
+        .in(scope);
+    bind(Object.class)
+        .annotatedWith(ReceiverInstance.class)
+        .toProvider(scope.<Object> provider())
+        .in(scope);
+    bind(ReceiverTarget.class)
+        .toProvider(scope.<ReceiverTarget> provider())
+        .in(scope);
   }
 }

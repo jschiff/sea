@@ -36,10 +36,11 @@ public interface ReceiverTarget {
    * of a target to some other callback or event-driven mechanism.
    * 
    * @param event the Event to dispatch
+   * @param context additional data to provide to event decorators
    * @return the value returned by the {@link Receiver} method, or replaced by an interveining
    *         {@link EventDecorator}
    */
-  DispatchResult dispatch(Event event);
+  DispatchResult dispatch(Event event, Object context);
 
   /**
    * For debugging use only. Returns the signature of the method that the ReceiverTarget will

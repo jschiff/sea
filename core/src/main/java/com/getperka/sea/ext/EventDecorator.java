@@ -103,6 +103,11 @@ public interface EventDecorator<A extends Annotation, E extends Event> {
     A getAnnotation();
 
     /**
+     * Returns the optional second parameter of {@link EventDispatch#fire(Event, Object)}.
+     */
+    Object getContext();
+
+    /**
      * The {@link Event} (or facet of a {@link CompositeEvent}) being dispatched.
      */
     E getEvent();

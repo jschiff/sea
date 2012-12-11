@@ -67,6 +67,7 @@ public class Invocation implements Callable<DispatchResult> {
     }
   }
 
+  private Object context;
   private EventDispatch dispatch;
   private Event event;
   private Logger logger;
@@ -81,7 +82,7 @@ public class Invocation implements Callable<DispatchResult> {
     DispatchResult toReturn = null;
     Thread.currentThread().setName(toString());
     try {
-      toReturn = target.dispatch(event);
+      toReturn = target.dispatch(event, context);
     } catch (Throwable t) {
       logger.error("Unable to dispatch event", t);
     } finally {
@@ -89,6 +90,10 @@ public class Invocation implements Callable<DispatchResult> {
       Thread.currentThread().setName("idle");
     }
     return toReturn;
+  }
+
+  public void setContext(Object context) {
+    this.context = context;
   }
 
   public void setEvent(Event event) {

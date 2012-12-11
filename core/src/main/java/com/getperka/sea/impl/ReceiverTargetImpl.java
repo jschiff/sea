@@ -181,8 +181,8 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
   protected ReceiverTargetImpl() {}
 
   @Override
-  public DispatchResult dispatch(Event event) {
-    eventScope.enter(event, this, instanceProvider);
+  public DispatchResult dispatch(Event event, Object context) {
+    eventScope.enter(event, this, instanceProvider, context);
     try {
 
       Callable<Object> toInvoke = works.get();

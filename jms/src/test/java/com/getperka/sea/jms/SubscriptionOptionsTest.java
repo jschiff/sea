@@ -58,6 +58,8 @@ public class SubscriptionOptionsTest {
       Object arg;
       if (String.class.equals(returnType)) {
         arg = m.getName();
+      } else if (boolean.class.equals(returnType)) {
+        arg = !((Boolean) m.getDefaultValue()).booleanValue();
       } else if (returnType.isEnum()) {
         List<Object> choices = new ArrayList<Object>(Arrays.asList(returnType.getEnumConstants()));
         choices.remove(m.getDefaultValue());
