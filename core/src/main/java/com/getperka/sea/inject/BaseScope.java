@@ -23,6 +23,7 @@ package com.getperka.sea.inject;
 import java.util.Map;
 
 import com.google.inject.Key;
+import com.google.inject.OutOfScopeException;
 import com.google.inject.Provider;
 import com.google.inject.Scope;
 
@@ -58,7 +59,7 @@ public abstract class BaseScope implements Scope {
   class DummyProvider<T> implements Provider<T> {
     @Override
     public T get() {
-      throw new IllegalStateException("Not in " + BaseScope.this.getClass().getSimpleName());
+      throw new OutOfScopeException("Not in " + BaseScope.this.getClass().getSimpleName());
     }
   }
 

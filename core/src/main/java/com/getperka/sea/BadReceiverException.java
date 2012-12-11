@@ -1,8 +1,7 @@
-package com.getperka.sea.impl;
-
+package com.getperka.sea;
 /*
  * #%L
- * Simple Event Architecture
+ * Simple Event Architecture - Core
  * %%
  * Copyright (C) 2012 Perka Inc.
  * %%
@@ -20,23 +19,22 @@ package com.getperka.sea.impl;
  * #L%
  */
 
-import java.lang.reflect.Method;
-
-import javax.inject.Provider;
-
-import com.getperka.sea.Event;
 import com.getperka.sea.ext.ReceiverTarget;
 
 /**
- * A {@link ReceiverTarget} that can be (re-)set.
+ * Indicates that a unsatisfiable {@code @Receiver} method declaration was encountered during
+ * registration.
  */
-public interface SettableReceiverTarget extends ReceiverTarget {
-  /**
-   * Returns the event type that the target expects.
-   */
-  Class<? extends Event> getEventType();
+public class BadReceiverException extends RuntimeException {
+  private static final long serialVersionUID = 1L;
+  private final ReceiverTarget target;
 
-  void setInstanceDispatch(Provider<? extends Object> provider, Method method);
+  public BadReceiverException(String message, ReceiverTarget target, Exception cause) {
+    super(message + " at " + target, cause);
+    this.target = target;
+  }
 
-  void setStaticDispatch(Method method);
+  public ReceiverTarget getTarget() {
+    return target;
+  }
 }

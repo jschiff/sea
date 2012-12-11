@@ -46,10 +46,10 @@ import com.getperka.sea.impl.ReceiverTargetImpl;
 import com.getperka.sea.impl.SettableReceiverTarget;
 import com.getperka.sea.impl.SettableRegistration;
 import com.getperka.sea.impl.SettableRegistrationImpl;
-import com.google.inject.PrivateModule;
+import com.google.inject.AbstractModule;
 import com.google.inject.TypeLiteral;
 
-public class EventModule extends PrivateModule {
+public class EventModule extends AbstractModule {
 
   private static class MyFactory implements ThreadFactory {
     private final ThreadGroup g = new ThreadGroup("SEA Dispatch");
@@ -69,10 +69,10 @@ public class EventModule extends PrivateModule {
 
     bind(DispatchResult.class).to(DispatchResultImpl.class);
 
-    expose(Event.class).annotatedWith(CurrentEvent.class);
+    // expose(Event.class).annotatedWith(CurrentEvent.class);
 
     bind(EventDispatch.class).to(DispatchImpl.class);
-    expose(EventDispatch.class);
+    // expose(EventDispatch.class);
 
     // Choose a reasonable default for the thread pool
     bind(ExecutorService.class)
@@ -88,7 +88,7 @@ public class EventModule extends PrivateModule {
     bind(Logger.class)
         .annotatedWith(EventLogger.class)
         .toInstance(LoggerFactory.getLogger(EventDispatch.class));
-    expose(Logger.class).annotatedWith(EventLogger.class);
+    // expose(Logger.class).annotatedWith(EventLogger.class);
 
     bind(SettableReceiverTarget.class).to(ReceiverTargetImpl.class);
     bind(SettableRegistration.class).to(SettableRegistrationImpl.class);

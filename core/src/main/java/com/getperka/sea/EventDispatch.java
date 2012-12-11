@@ -61,18 +61,25 @@ public interface EventDispatch {
   /**
    * Register a receiver class. Instances of the class will be created on demand for each event the
    * class receives.
+   * 
+   * @throws BadReceiverException if an unsatisfactory {@code @Receiver} declaration is encountered
    */
-  Registration register(Class<?> receiver);
+  Registration register(Class<?> receiver) throws BadReceiverException;
 
   /**
    * Register a receiver class, using the given Provider to instantiate the instances.
+   * 
+   * @throws BadReceiverException if an unsatisfactory {@code @Receiver} declaration is encountered
    */
-  <T> Registration register(Class<T> receiver, Provider<? extends T> provider);
+  <T> Registration register(Class<T> receiver, Provider<? extends T> provider)
+      throws BadReceiverException;
 
   /**
    * Register a singleton receiver.
+   * 
+   * @throws BadReceiverException if an unsatisfactory {@code @Receiver} declaration is encountered
    */
-  Registration register(Object receiver);
+  Registration register(Object receiver) throws BadReceiverException;
 
   /**
    * Prevents any further events from being dispatched. Events that are queued will be dropped.

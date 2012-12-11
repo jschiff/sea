@@ -27,6 +27,7 @@ import java.util.concurrent.Callable;
 
 import com.getperka.sea.ext.EventDecorator;
 import com.google.inject.Key;
+import com.google.inject.OutOfScopeException;
 import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
 
@@ -58,7 +59,7 @@ public class DecoratorScope extends BaseScope {
       protected Map<Key<?>, Object> scopeMap() {
         Map<Key<?>, Object> localMap = map.get();
         if (localMap == null) {
-          throw new IllegalStateException("Not in a DecoratorScope");
+          throw new OutOfScopeException("Not in a DecoratorScope");
         }
         return localMap;
       }

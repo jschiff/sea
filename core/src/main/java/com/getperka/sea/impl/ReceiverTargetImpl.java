@@ -40,6 +40,7 @@ import javax.inject.Provider;
 
 import org.slf4j.Logger;
 
+import com.getperka.sea.BadReceiverException;
 import com.getperka.sea.CompositeEvent;
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.DispatchResult;
@@ -49,14 +50,17 @@ import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.CurrentEvent;
 import com.getperka.sea.inject.DecoratorScope;
 import com.getperka.sea.inject.EventLogger;
-import com.getperka.sea.inject.ReceiverScope;
-import com.getperka.sea.inject.ReceiverScoped;
 import com.getperka.sea.inject.GlobalDecorators;
 import com.getperka.sea.inject.ReceiverInstance;
+import com.getperka.sea.inject.ReceiverScope;
+import com.getperka.sea.inject.ReceiverScoped;
 import com.getperka.sea.inject.WasDispatched;
 import com.getperka.sea.inject.WasReturned;
 import com.getperka.sea.inject.WasThrown;
+import com.google.inject.BindingAnnotation;
+import com.google.inject.ConfigurationException;
 import com.google.inject.Injector;
+import com.google.inject.Key;
 import com.google.inject.TypeLiteral;
 
 /**
@@ -67,9 +71,6 @@ import com.google.inject.TypeLiteral;
 public class ReceiverTargetImpl implements SettableReceiverTarget {
   @ReceiverScoped
   static class Work implements Callable<Object> {
-    @CurrentEvent
-    @Inject
-    private Event event;
     @Inject
     @ReceiverInstance
     private Provider<Object> instance;
@@ -92,8 +93,22 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
 
     @Override
     public Object call() throws IllegalArgumentException, IllegalAccessException {
+      // Up-convert the receiver reference to the implementation type
+      ReceiverTargetImpl impl = (ReceiverTargetImpl) target;
+
+      // Obtain each argument for the method
+      Object[] args = new Object[impl.methodArgumentProviders.size()];
+      for (int i = 0, j = args.length; i < j; i++) {
+        try {
+          args[i] = impl.methodArgumentProviders.get(i).get();
+        } catch (RuntimeException e) {
+          throw new RuntimeException("Could not obtain argument " + i + " for " + impl, e);
+        }
+      }
+
+      // Now dispatch
       try {
-        Object value = ((ReceiverTargetImpl) target).method.invoke(instance.get(), event);
+        Object value = impl.method.invoke(instance.get(), args);
         wasReturned.set(value);
         return value;
       } catch (InvocationTargetException e) {
@@ -133,6 +148,10 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
    */
   private ReceiverScope eventScope;
   /**
+   * The type of event that the ReceiverTarget expects to receive.
+   */
+  private Class<? extends Event> eventType;
+  /**
    * Injected configuration for top-level decorators.
    */
   private Collection<AnnotatedElement> globalDecorators;
@@ -152,6 +171,10 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
    * Set via {@link #setInstanceDispatch} or {@link #setStaticDispatch}.
    */
   private Method method;
+  /**
+   * Contains providers for each argument of the method, including the current event.
+   */
+  private List<Provider<?>> methodArgumentProviders;
   private Provider<DispatchResult> results;
   private Provider<Work> works;
 
@@ -240,6 +263,11 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
   }
 
   @Override
+  public Class<? extends Event> getEventType() {
+    return eventType;
+  }
+
+  @Override
   public int hashCode() {
     return (instanceProvider == null ? 0 : instanceProvider.hashCode()) * 13 +
       (method == null ? 0 : method.hashCode()) * 7;
@@ -249,7 +277,9 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
   public void setInstanceDispatch(Provider<?> provider, Method method) {
     this.instanceProvider = provider;
     this.method = method;
+    method.setAccessible(true);
     computeDecorators();
+    computeProviders();
   }
 
   @Override
@@ -259,17 +289,14 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
     }
     instanceProvider = null;
     method = staticMethod;
+    method.setAccessible(true);
     computeDecorators();
+    computeProviders();
   }
 
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-
-    // Add annotations
-    for (Annotation a : decoratorAnnotations) {
-      sb.append(a).append("\n");
-    }
 
     // void com.example.Foo.bar(com.example.Event)
     sb.append(method.getReturnType().getName()).append(" ")
@@ -331,6 +358,52 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
             (Provider<EventDecorator<Annotation, Event>>) injector.getProvider(clazz);
         decoratorAnnotations.add(a);
         decoratorProviders.add(provider);
+      }
+    }
+  }
+
+  private void computeProviders() {
+    Key<Event> keyCurrentEvent = Key.get(Event.class, CurrentEvent.class);
+    Annotation[][] annotations = method.getParameterAnnotations();
+    Type[] params = method.getGenericParameterTypes();
+    methodArgumentProviders = new ArrayList<Provider<?>>(params.length);
+
+    for (int i = 0, j = params.length; i < j; i++) {
+      Type param = params[i];
+      Class<?> rawParamType = TypeLiteral.get(param).getRawType();
+      Annotation binding = null;
+
+      // First, see if there's a binding annotation
+      for (Annotation a : annotations[i]) {
+        if (a.annotationType().isAnnotationPresent(BindingAnnotation.class)) {
+          binding = a;
+          break;
+        }
+      }
+
+      Key<?> key;
+      if (binding == null) {
+        if (Event.class.isAssignableFrom(rawParamType)) {
+          // An un-annotated reference to an event type will be considered a CurrentEvent reference
+          key = keyCurrentEvent;
+        } else {
+          // Otherwise, just ask for an unannotated binding
+          key = Key.get(param);
+        }
+      } else {
+        // Annotated type binding
+        key = Key.get(param, binding);
+      }
+
+      if (CurrentEvent.class.equals(key.getAnnotationType())) {
+        eventType = rawParamType.asSubclass(Event.class);
+      }
+
+      try {
+        methodArgumentProviders.add(injector.getProvider(key));
+      } catch (ConfigurationException e) {
+        throw new BadReceiverException("Cannot compute injection binding for parameter " + i,
+            this, e);
       }
     }
   }

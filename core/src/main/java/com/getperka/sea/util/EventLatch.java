@@ -35,16 +35,17 @@ import com.getperka.sea.Receiver;
 import com.getperka.sea.Registration;
 
 /**
- * A latch that waits for a specific number of Events assignable to a particular type. In addition
- * to simply counting down, instances of this type also record the targeted events that they have
- * received.
+ * A latch that waits for a specific number of Events. In addition to simply counting down,
+ * instances of this type also record the targeted events that they have received.
  * <p>
  * An instance of an EventCountDownLatch is automatically attached to an EventDispatch instance when
  * it is created and will detach itself once the requested number of events have been collected.
+ * <p>
+ * Subclasses must declare ore or more {@link Receiver} methods that call {@link #countDown(Event)}.
  * 
  * @see CountDownLatch
  */
-public class EventLatch<T extends Event> {
+public abstract class EventLatch<T extends Event> {
   /**
    * Creates a latch to collect the next {@code count} events assignable to the requested type from
    * the given EventDispatch.
@@ -57,8 +58,15 @@ public class EventLatch<T extends Event> {
    *         EventDispatch instance
    */
   public static <E extends Event> EventLatch<E> create(EventDispatch dispatch,
-      Class<E> eventType, int count) {
-    return new EventLatch<E>(dispatch, eventType, count);
+      final Class<E> eventType, int count) {
+    return new EventLatch<E>(dispatch, count) {
+      @Receiver
+      void event(Event event) {
+        if (eventType.isInstance(event)) {
+          countDown(eventType.cast(event));
+        }
+      }
+    };
   }
 
   /**
@@ -80,11 +88,9 @@ public class EventLatch<T extends Event> {
   private Registration eventRegistration;
   private final Condition finishedCollection = countingLock.newCondition();
   private Queue<T> received = new ConcurrentLinkedQueue<T>();
-  private final Class<T> targetType;
 
-  protected EventLatch(EventDispatch dispatch, Class<T> eventType, int count) {
+  protected EventLatch(EventDispatch dispatch, int count) {
     this.dispatch = dispatch;
-    this.targetType = eventType;
 
     reset(count);
   }
@@ -141,33 +147,6 @@ public class EventLatch<T extends Event> {
   }
 
   /**
-   * Receives events from the {@link EventDispatch}. Events that match the filter are passed to the
-   * {@link #eventCollected} hook method.
-   */
-  @Receiver
-  public void countDown(Event event) {
-    countingLock.lock();
-    try {
-      if (!isCollecting()) {
-        return;
-      }
-      if (targetType.isInstance(event)) {
-        T collected = targetType.cast(event);
-        received.add(collected);
-        if (count.decrementAndGet() == 0) {
-          eventRegistration.cancel();
-          eventRegistration = null;
-          finishedCollection.signalAll();
-        }
-
-        eventCollected(collected);
-      }
-    } finally {
-      countingLock.unlock();
-    }
-  }
-
-  /**
    * Returns the queue that the latch is collecting events into. The queue can be drained while the
    * latch is still attached to the {@link EventDispatch}.
    */
@@ -178,13 +157,6 @@ public class EventLatch<T extends Event> {
     } finally {
       countingLock.unlock();
     }
-  }
-
-  /**
-   * Returns the {@link Event} type that the latch is filtering on.
-   */
-  public Class<T> getTargetType() {
-    return targetType;
   }
 
   /**
@@ -218,14 +190,28 @@ public class EventLatch<T extends Event> {
   }
 
   /**
-   * A hook method that is called by {@link #countDown(Event)} to allow subclasses to observe events
-   * as they are being collected. The default implementation is a no-op.
-   * 
-   * @param event an event that matched the filter
+   * Receives events from the {@link EventDispatch}. Events that match the filter are passed to the
+   * {@link #eventCollected} hook method.
    */
-  protected void eventCollected(T event) {}
+  protected void countDown(T event) {
+    countingLock.lock();
+    try {
+      if (!isCollecting()) {
+        return;
+      }
+      received.add(event);
+      if (count.decrementAndGet() == 0) {
+        eventRegistration.cancel();
+        eventRegistration = null;
+        finishedCollection.signalAll();
+      }
 
-  private boolean isCollecting() {
+    } finally {
+      countingLock.unlock();
+    }
+  }
+
+  boolean isCollecting() {
     return count.get() > 0;
   }
 }

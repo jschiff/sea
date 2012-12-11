@@ -102,6 +102,10 @@ public class BaseCompositeEvent implements CompositeEvent {
     return facets;
   }
 
+  public synchronized void setEventFacets(Collection<? extends Event> facets) {
+    this.facets = new ArrayList<Event>(facets);
+  }
+
   /**
    * Adds an Event facet.
    */

@@ -83,29 +83,7 @@ public class SettableRegistrationImpl implements SettableRegistration {
         continue;
       }
 
-      // Check that the first and only parameter is an Event
-      Class<?>[] params = m.getParameterTypes();
-      if (params.length != 1) {
-        logger.warn("Ignoring {}.{} becasue it has more than one argument",
-            receiver.getName(), m.getName());
-        continue;
-      }
-      if (!Event.class.isAssignableFrom(params[0])) {
-        logger.warn("Ignoring {}.{} because its sole argument is not assignable to Event",
-            receiver.getName(), m.getName());
-        continue;
-      }
-
-      // Get or create an accumulator for declared events
-      Class<? extends Event> event = params[0].asSubclass(Event.class);
-      List<ReceiverTarget> list = temp.get(event);
-      if (list == null) {
-        list = new ArrayList<ReceiverTarget>();
-        temp.put(event, list);
-      }
-
-      // Create a ReceiverTarget that will dispatch to the method
-      m.setAccessible(true);
+      // Create a ReceiverTarget to handle dispatch to the method
       SettableReceiverTarget target = dispatchTargets.get();
       if (Modifier.isStatic(m.getModifiers())) {
         target.setStaticDispatch(m);
@@ -115,6 +93,21 @@ public class SettableRegistrationImpl implements SettableRegistration {
         }
         target.setInstanceDispatch(provider, m);
       }
+
+      Class<? extends Event> event = target.getEventType();
+      if (event == null) {
+        logger.warn("Ignoring {}.{} because it does not receive an Event type",
+            receiver.getName(), m.getName());
+        continue;
+      }
+
+      List<ReceiverTarget> list = temp.get(event);
+      if (list == null) {
+        list = new ArrayList<ReceiverTarget>();
+        temp.put(event, list);
+      }
+
+      // Create a ReceiverTarget that will dispatch to the method
       list.add(target);
       logger.debug("{}.{} will receive {}",
           new Object[] { receiver.getName(), m.getName(), event.getName() });

@@ -89,26 +89,6 @@ public class EventSmokeTest {
       received.add(event);
       latch.countDown();
     }
-
-    @Receiver
-    void shouldNotReceive() {
-      fail();
-    }
-
-    // Not decorated with @Receiver
-    void shouldNotReceive(MyEvent event) {
-      fail();
-    }
-
-    @Receiver
-    void shouldNotReceive(MyEvent event, boolean ignored) {
-      fail();
-    }
-
-    @Receiver
-    void shouldNotReceive(String ignored) {
-      fail();
-    }
   }
 
   @EventDecoratorBinding(Decorator.class)

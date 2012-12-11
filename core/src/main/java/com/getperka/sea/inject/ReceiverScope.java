@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.google.inject.Key;
+import com.google.inject.OutOfScopeException;
 import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
 
@@ -76,6 +77,10 @@ public class ReceiverScope extends BaseScope {
     frameStack.get().pop();
   }
 
+  public boolean inReceiver() {
+    return !frameStack.get().isEmpty();
+  }
+
   @Override
   public <T> Provider<T> scope(final Key<T> key, final Provider<T> unscoped) {
     return new MapProvider<T>(key, unscoped) {
@@ -83,7 +88,7 @@ public class ReceiverScope extends BaseScope {
       protected Map<Key<?>, Object> scopeMap() {
         Frame frame = frameStack.get().peek();
         if (frame == null) {
-          throw new IllegalStateException("Not in an EventScope");
+          throw new OutOfScopeException("Not in a ReceiverScope");
         }
         return frame.values;
       }
