@@ -35,11 +35,7 @@ import org.slf4j.Logger;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
-import com.getperka.sea.Receiver;
-import com.getperka.sea.Registration;
-import com.getperka.sea.inject.EventContext;
 import com.getperka.sea.inject.EventLogger;
-import com.getperka.sea.jms.EventSubscription;
 import com.getperka.sea.jms.EventTransport;
 import com.getperka.sea.jms.EventTransportException;
 import com.getperka.sea.jms.inject.EventSession;
@@ -47,11 +43,10 @@ import com.getperka.sea.jms.inject.EventSession;
 /**
  * Manages a single subscription to a JMS destination.
  */
-public class EventSubscriptionImpl implements EventSubscription, MessageListener {
+public class EventSubscription implements MessageListener {
 
   private MessageProducer defaultMessageProducer;
   private EventDispatch dispatch;
-  private Registration dispatchRegistration;
   private EventMetadataMap eventMetadata;
   private Class<? extends Event> eventType;
   private boolean honorReplyTo;
@@ -62,18 +57,42 @@ public class EventSubscriptionImpl implements EventSubscription, MessageListener
   private final AtomicBoolean shutdown = new AtomicBoolean();
   private EventTransport transport;
 
-  protected EventSubscriptionImpl() {}
+  protected EventSubscription() {}
 
-  @Override
   public void cancel() {
     if (shutdown.getAndSet(true)) {
       return;
     }
-    dispatchRegistration.cancel();
     try {
       messageConsumer.close();
     } catch (JMSException e) {
       logger.warn("Could not close MessageConsumer", e);
+    }
+  }
+
+  public void maybeSendToJms(Event event, Object context) {
+    if (!eventType.isAssignableFrom(event.getClass())) {
+      return;
+    }
+    // Avoid send-loops
+    if (this.equals(context)) {
+      return;
+    }
+    try {
+      MessageProducer producer = getTargetProducer(event);
+      if (producer != null) {
+        sendEvent(producer, event);
+
+        /*
+         * If the MessageProducer is a temporary one, close it to avoid the need to wait for the
+         * finalizers to run.
+         */
+        if (producer != defaultMessageProducer) {
+          producer.close();
+        }
+      }
+    } catch (JMSException e) {
+      logger.error("Unable to send event to JMS service", e);
     }
   }
 
@@ -104,9 +123,8 @@ public class EventSubscriptionImpl implements EventSubscription, MessageListener
     this.honorReplyTo = honorReplyTo;
 
     returnQueue = session.createTemporaryQueue();
-    messageConsumer = session.createConsumer(returnQueue);
+    messageConsumer = session.createConsumer(returnQueue, null, false);
     messageConsumer.setMessageListener(this);
-    dispatchRegistration = dispatch.register(this);
   }
 
   @Inject
@@ -118,34 +136,6 @@ public class EventSubscriptionImpl implements EventSubscription, MessageListener
     this.logger = logger;
     this.session = session;
     this.transport = transport;
-  }
-
-  @Receiver
-  void maybeSendToJms(Event event, @EventContext Object context) {
-    // TODO: Subscribe to subclasses?
-    if (!eventType.equals(event.getClass())) {
-      return;
-    }
-    // Avoid send-loops
-    if (this.equals(context)) {
-      return;
-    }
-    try {
-      MessageProducer producer = getTargetProducer(event);
-      if (producer != null) {
-        sendEvent(producer, event);
-
-        /*
-         * If the MessageProducer is a temporary one, close it to avoid the need to wait for the
-         * finalizers to run.
-         */
-        if (producer != defaultMessageProducer) {
-          producer.close();
-        }
-      }
-    } catch (JMSException e) {
-      logger.error("Unable to send event to JMS service", e);
-    }
   }
 
   /**

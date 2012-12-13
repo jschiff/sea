@@ -1,4 +1,4 @@
-package com.getperka.sea.jms.decorator;
+package com.getperka.sea.jms;
 /*
  * #%L
  * Simple Event Architecture - JMS Support
@@ -20,29 +20,22 @@ package com.getperka.sea.jms.decorator;
  */
 
 import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.getperka.sea.Event;
-import com.getperka.sea.ext.EventDecoratorBinding;
-import com.getperka.sea.jms.EventSubscriber;
 
 /**
- * A decorator that suppresses any events assignable to the specified types unless the events have
- * been received via a JMS destination. This allows locally-generated events to behave as though
- * they were sent remotely. This filter should normally be applied globally and is particularly
- * useful in test environments. Local events will always be permitted to reach an
- * {@link EventSubscriber}.
+ * Maps an event type to options.
+ * 
+ * @see Subscriptions
  */
 @Documented
-@EventDecoratorBinding(SuppressLocalEventsFilter.class)
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ ElementType.METHOD, ElementType.PACKAGE, ElementType.TYPE })
-public @interface SuppressLocalEvents {
-  /**
-   * The event types to suppress.
-   */
-  Class<? extends Event>[] value();
+@Target({})
+public @interface Subscription {
+  Class<? extends Event> event();
+
+  SubscriptionOptions options() default @SubscriptionOptions;
 }

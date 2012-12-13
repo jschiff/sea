@@ -26,17 +26,15 @@ import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
 import javax.jms.Session;
 
-import com.getperka.sea.jms.EventSubscriber;
-import com.getperka.sea.jms.impl.EventSubscriberImpl;
-import com.google.inject.PrivateModule;
+import com.getperka.sea.jms.impl.EventSubscriber;
+import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 
-public class JmsEventModule extends PrivateModule {
+public class JmsEventModule extends AbstractModule {
 
   @Override
   protected void configure() {
-    bind(EventSubscriber.class).to(EventSubscriberImpl.class).asEagerSingleton();
-    expose(EventSubscriber.class);
+    bind(EventSubscriber.class);
   }
 
   @EventConnection

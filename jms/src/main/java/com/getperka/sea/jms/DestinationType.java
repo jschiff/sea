@@ -19,13 +19,19 @@ package com.getperka.sea.jms;
  * #L%
  */
 
+import javax.jms.Queue;
+import javax.jms.Topic;
+
 /**
- * A handle returned by {@link EventSubscriber#subscribe} that allows an individual subscription to
- * be canceled.
+ * Controls the destination type used when routing an event message.
  */
-public interface EventSubscription {
+public enum DestinationType {
   /**
-   * Cancel the subscription. Calling this method more than once has no effect.
+   * Use a JMS {@link Queue}. Events sent via a queue will be received by exactly one subscriber.
    */
-  void cancel();
+  QUEUE,
+  /**
+   * Use a JMS {@link Topic}. Events sent via a topic will be received by all subscribers.
+   */
+  TOPIC;
 }

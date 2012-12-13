@@ -19,19 +19,17 @@ package com.getperka.sea.jms;
  * #L%
  */
 
-import javax.jms.Queue;
-import javax.jms.Topic;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-/**
- * Controls the destination type used when routing an event message.
- */
-public enum SendMode {
-  /**
-   * Use a JMS {@link Queue}. Events sent via a queue will be received by exactly one subscriber.
-   */
-  QUEUE,
-  /**
-   * Use a JMS {@link Topic}. Events sent via a topic will be received by all subscribers.
-   */
-  TOPIC;
+import com.getperka.sea.ext.EventObserverBinding;
+import com.getperka.sea.jms.impl.SubscriptionObserver;
+
+@EventObserverBinding(SubscriptionObserver.class)
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ ElementType.PACKAGE, ElementType.METHOD, ElementType.TYPE })
+public @interface Subscriptions {
+  Subscription[] value();
 }

@@ -40,6 +40,10 @@ import com.getperka.sea.util.EventLatch;
  */
 public class MessageEventTest extends JmsTestBase {
 
+  @Subscriptions(@Subscription(event = MyEvent.class, options = @SubscriptionOptions(
+      messageSelector = "myHeader = 'Hello world!'")))
+  interface HasHeaderSubscription {}
+
   static class MyEvent implements MessageEvent {
     private String data;
 
@@ -64,10 +68,17 @@ public class MessageEventTest extends JmsTestBase {
     }
   }
 
+  @Subscriptions(@Subscription(event = MyEvent.class, options = @SubscriptionOptions(
+      messageSelector = "myHeader = 'Does not compute'")))
+  interface OtherHeaderSubscription {}
+
+  @Subscriptions(@Subscription(event = MyEvent.class))
+  interface SimpleSubscription {}
+
   @Test(timeout = TEST_TIMEOUT)
   public void test() throws EventSubscriberException, InterruptedException {
-    subscriber(0).subscribe(MyEvent.class);
-    subscriber(1).subscribe(MyEvent.class);
+    dispatch(0).addGlobalDecorator(SimpleSubscription.class);
+    dispatch(1).addGlobalDecorator(SimpleSubscription.class);
 
     MyEvent evt = new MyEvent();
     evt.setData("Hello world!");
@@ -82,13 +93,9 @@ public class MessageEventTest extends JmsTestBase {
 
   @Test(timeout = TEST_TIMEOUT)
   public void testSelectorMatch() throws EventSubscriberException, InterruptedException {
-    SubscriptionOptions options =
-        new SubscriptionOptionsBuilder()
-            .messageSelector("myHeader = 'Hello world!'")
-            .build();
+    dispatch(0).addGlobalDecorator(SimpleSubscription.class);
+    dispatch(1).addGlobalDecorator(HasHeaderSubscription.class);
 
-    subscriber(0).subscribe(MyEvent.class);
-    subscriber(1).subscribe(MyEvent.class, options);
     EventLatch<MyEvent> latch = EventLatch.create(dispatch(1), MyEvent.class, 1);
 
     MyEvent evt = new MyEvent();
@@ -102,13 +109,9 @@ public class MessageEventTest extends JmsTestBase {
 
   @Test(timeout = TEST_TIMEOUT)
   public void testSelectorNoMatch() throws EventSubscriberException, InterruptedException {
-    SubscriptionOptions options =
-        new SubscriptionOptionsBuilder()
-            .messageSelector("myHeader = 'Does not compute'")
-            .build();
+    dispatch(0).addGlobalDecorator(SimpleSubscription.class);
+    dispatch(1).addGlobalDecorator(OtherHeaderSubscription.class);
 
-    subscriber(0).subscribe(MyEvent.class);
-    subscriber(1).subscribe(MyEvent.class, options);
     EventLatch<MyEvent> latch = EventLatch.create(dispatch(1), MyEvent.class, 1);
 
     MyEvent evt = new MyEvent();

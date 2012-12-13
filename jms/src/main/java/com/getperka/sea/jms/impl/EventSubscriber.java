@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
+import javax.inject.Singleton;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.MessageConsumer;
@@ -37,36 +38,39 @@ import org.slf4j.Logger;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.inject.EventLogger;
-import com.getperka.sea.jms.EventSubscriber;
 import com.getperka.sea.jms.EventSubscriberException;
-import com.getperka.sea.jms.EventSubscription;
 import com.getperka.sea.jms.EventTransport;
 import com.getperka.sea.jms.ReturnMode;
+import com.getperka.sea.jms.RoutingMode;
 import com.getperka.sea.jms.SubscriptionMode;
 import com.getperka.sea.jms.SubscriptionOptions;
 import com.getperka.sea.jms.inject.EventSession;
 
-@SubscriptionOptions
-public class EventSubscriberImpl implements EventSubscriber {
+/**
+ * The EventSubscriber controls how events are routed across a JMS domain. Specific event types are
+ * registered with the EventSubscriber by the {@link SubscriptionObserver}.
+ */
+@Singleton
+public class EventSubscriber {
 
   private Provider<MessageAcknowledger> acknowledgers;
-  private final SubscriptionOptions defaultOptions =
-      getClass().getAnnotation(SubscriptionOptions.class);
   private Logger logger;
   private Session session;
   private final AtomicBoolean shutdown = new AtomicBoolean();
-  private final ConcurrentMap<Class<? extends Event>, EventSubscriptionImpl> subscribed =
-      new ConcurrentHashMap<Class<? extends Event>, EventSubscriptionImpl>();
-  private Provider<EventSubscriptionImpl> subscriptions;
+  private final ConcurrentMap<Class<? extends Event>, EventSubscription> subscribed =
+      new ConcurrentHashMap<Class<? extends Event>, EventSubscription>();
+  private Provider<EventSubscription> subscriptions;
   private EventTransport transport;
 
-  protected EventSubscriberImpl() {}
+  protected EventSubscriber() {}
 
-  @Override
+  /**
+   * Terminate all subscriptions.
+   */
   public void shutdown() {
     shutdown.set(true);
 
-    for (EventSubscriptionImpl subscription : subscribed.values()) {
+    for (EventSubscription subscription : subscribed.values()) {
       subscription.cancel();
     }
 
@@ -77,20 +81,8 @@ public class EventSubscriberImpl implements EventSubscriber {
     }
   }
 
-  @Override
-  public EventSubscription subscribe(Class<? extends Event> eventType)
-      throws EventSubscriberException {
-    SubscriptionOptions options = eventType.getAnnotation(SubscriptionOptions.class);
-    if (options == null) {
-      options = defaultOptions;
-    }
-
-    return subscribe(eventType, options);
-  }
-
-  @Override
-  public EventSubscription subscribe(Class<? extends Event> eventType, SubscriptionOptions options)
-      throws EventSubscriberException {
+  public EventSubscription subscribe(Class<? extends Event> eventType,
+      SubscriptionOptions options) throws EventSubscriberException {
     if (shutdown.get()) {
       throw new IllegalStateException("EventSubscriber has been shut down");
     }
@@ -105,7 +97,7 @@ public class EventSubscriberImpl implements EventSubscriber {
 
       // Determine where an otherwise-undirected event should be sent
       Destination destination;
-      switch (options.sendMode()) {
+      switch (options.destinationType()) {
         case QUEUE:
           destination = session.createQueue(destinationName);
           break;
@@ -113,35 +105,37 @@ public class EventSubscriberImpl implements EventSubscriber {
           destination = session.createTopic(destinationName);
           break;
         default:
-          throw new UnsupportedOperationException(options.sendMode().name());
+          throw new UnsupportedOperationException(options.destinationType().name());
       }
 
       // Determine how a returned event should be sent
       boolean honorReplyTo = ReturnMode.RETURN_TO_SENDER.equals(options.returnMode());
 
       SubscriptionMode mode = options.subscriptionMode();
-      EventSubscriptionImpl subscription = subscriptions.get();
+      EventSubscription subscription = subscriptions.get();
 
       MessageProducer producer = mode.shouldSend() ? session.createProducer(destination) : null;
       subscription.subscribe(eventType, producer, honorReplyTo);
 
       if (mode.shouldReceive()) {
         MessageConsumer consumer;
+        // Prevents the local subscriber stack from seeing its own JMS messages
+        boolean noLocal = RoutingMode.LOCAL.equals(options.routingMode());
         String selector = options.messageSelector().isEmpty() ? null : options.messageSelector();
-        switch (options.sendMode()) {
+        switch (options.destinationType()) {
           case QUEUE:
-            consumer = session.createConsumer(destination, selector, options.preventEchoEffect());
+            consumer = session.createConsumer(destination, selector, noLocal);
             break;
           case TOPIC:
             if (options.durableSubscriberId().isEmpty()) {
-              consumer = session.createConsumer(destination, selector, options.preventEchoEffect());
+              consumer = session.createConsumer(destination, selector, noLocal);
             } else {
               consumer = session.createDurableSubscriber((Topic) destination,
-                  options.durableSubscriberId(), selector, options.preventEchoEffect());
+                  options.durableSubscriberId(), selector, noLocal);
             }
             break;
           default:
-            throw new UnsupportedOperationException(options.sendMode().name());
+            throw new UnsupportedOperationException(options.destinationType().name());
         }
 
         if (mode.shouldAcknowledge()) {
@@ -157,14 +151,24 @@ public class EventSubscriberImpl implements EventSubscriber {
     }
   }
 
+  void fire(Event event, Object context) {
+    for (EventSubscription subscription : subscribed.values()) {
+      subscription.maybeSendToJms(event, context);
+    }
+  }
+
   @Inject
   void inject(Provider<MessageAcknowledger> acknowledgers, @EventLogger Logger logger,
-      @EventSession Session session, Provider<EventSubscriptionImpl> subscriptions,
+      @EventSession Session session, Provider<EventSubscription> subscriptions,
       EventTransport transport) {
     this.acknowledgers = acknowledgers;
     this.logger = logger;
     this.session = session;
     this.subscriptions = subscriptions;
     this.transport = transport;
+  }
+
+  boolean isSubscribed(Class<? extends Event> eventType) {
+    return subscribed.containsKey(eventType);
   }
 }

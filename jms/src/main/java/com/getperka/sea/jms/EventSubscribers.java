@@ -23,43 +23,29 @@ package com.getperka.sea.jms;
 import javax.jms.ConnectionFactory;
 
 import com.getperka.sea.EventDispatch;
-import com.getperka.sea.impl.HasInjector;
+import com.getperka.sea.EventDispatchers;
 import com.getperka.sea.jms.inject.EventConnectionFactory;
 import com.getperka.sea.jms.inject.JmsEventModule;
-import com.google.inject.Injector;
+import com.google.inject.Module;
 
 /**
  * A factory for {@link EventSubscriber} instances.
  */
 public class EventSubscribers {
   /**
-   * Construct an {@link EventDispatch} to JMS bridge. This method will return a new instance each
-   * time it is called, allowing multiple JMS bindings and subscription sets to be established.
+   * Construct a module that enables an {@link EventDispatch} to JMS bridge. The module returned by
+   * this method can be passed to {@link EventDispatchers#create(Module...)}.
    * 
-   * @param dispatch the EventDispatch to bind to
    * @param connectionFactory a source of JMS connections, which must be pre-configured to vend
    *          connections via the no-arg {@link ConnectionFactory#createConnection()} method
-   * @return a new {@link EventSubscriber}
+   * @param eventTransport an optional custom EventTransport instance to convert Events to JMS
+   *          Messages
+   * @return a Module with the necessary configuration
    */
-  public static EventSubscriber create(EventDispatch dispatch, ConnectionFactory connectionFactory) {
-    return create(dispatch, connectionFactory, null);
-  }
-
-  /**
-   * Construct an {@link EventDispatch} to JMS bridge. This method will return a new instance each
-   * time it is called, allowing multiple JMS bindings and subscription sets to be established.
-   * 
-   * @param dispatch the EventDispatch to bind to
-   * @param connectionFactory a source of JMS connections, which must be pre-configured to vend
-   *          connections via the no-arg {@link ConnectionFactory#createConnection()} method
-   * @param eventTransport a custom EventTransport instance to convert Events to JMS Messages
-   * @return a new {@link EventSubscriber}
-   */
-  public static EventSubscriber create(EventDispatch dispatch,
+  public static Module createModule(
       final ConnectionFactory connectionFactory,
       final EventTransport eventTransport) {
-    Injector injector = ((HasInjector) dispatch).getInjector();
-    Injector childInjector = injector.createChildInjector(new JmsEventModule() {
+    return new JmsEventModule() {
       @Override
       protected void configure() {
         super.configure();
@@ -70,8 +56,7 @@ public class EventSubscribers {
           bind(EventTransport.class).toInstance(eventTransport);
         }
       }
-    });
-    return childInjector.getInstance(EventSubscriber.class);
+    };
   }
 
   /**

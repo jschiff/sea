@@ -19,19 +19,21 @@ package com.getperka.sea.jms;
  * #L%
  */
 
-import com.getperka.sea.EventDispatch;
-
 /**
- * Controls the destination of an event when it is passed to {@link EventDispatch#fire} after having
- * been received.
+ * Controls how events are routed.
  */
-public enum ReturnMode {
+public enum RoutingMode {
   /**
-   * Return the event to the JMS reply-to Destination.
+   * Allows events to be routed directly to local receives.
    */
-  RETURN_TO_SENDER,
+  LOCAL,
   /**
-   * Use the default {@link SubscriptionOptions#sendMode()} for the event.
+   * Allows events to be routed locally, with the caveat that a duplicate event may also be received
+   * via JMS.
    */
-  ORIGINAL_DESTINATION;
+  LOCAL_ALLOW_DUPS,
+  /**
+   * Force events to be routed through JMS so all events are effectively remote.
+   */
+  REMOTE;
 }

@@ -21,7 +21,6 @@ package com.getperka.sea.jms;
  */
 
 import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -31,7 +30,7 @@ import javax.jms.Message;
 import javax.jms.Queue;
 import javax.jms.Topic;
 
-import com.getperka.sea.jms.decorator.SuppressLocalEvents;
+import com.getperka.sea.EventDispatch;
 
 /**
  * Controls options related to Event routing.
@@ -41,7 +40,7 @@ import com.getperka.sea.jms.decorator.SuppressLocalEvents;
 @Inherited
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
+@Target({})
 public @interface SubscriptionOptions {
   // NB: When adding additional methods, update the builder
 
@@ -52,8 +51,16 @@ public @interface SubscriptionOptions {
   String destinationName() default "";
 
   /**
-   * Durable subscriptions are used with {@link SendMode#TOPIC} to ensure that all messages sent to
-   * a topic will eventually be received by a subscriber, even if the process is temporarily halted.
+   * An event can be sent either via a JMS {@link Queue} or a {@link Topic}. The former is provides
+   * single-issue distribution semantics, while the latter provides broadcast semantics. The default
+   * is {@link DestinationType#TOPIC}.
+   */
+  DestinationType destinationType() default DestinationType.TOPIC;
+
+  /**
+   * Durable subscriptions are used with {@link DestinationType#TOPIC} to ensure that all messages
+   * sent to a topic will eventually be received by a subscriber, even if the process is temporarily
+   * halted.
    */
   String durableSubscriberId() default "";
 
@@ -65,29 +72,19 @@ public @interface SubscriptionOptions {
   String messageSelector() default "";
 
   /**
-   * By default, any JMS messages that are published by an EventSubscriber will not be received by
-   * that subscriber. This prevents an "echo effect" where an event is received locally via direct
-   * event dispatch and again from the subscriber receiving the JMS message it just sent. This is
-   * only a concern if a local receiver exists for remote event types.
-   * <p>
-   * By setting this property to {@code false} and using a {@link SuppressLocalEvents} filter, all
-   * direct dispatches can be disabled, instead requiring local event receivers to be driven by the
-   * EventSubscriber from messages in the JMS destination.
-   */
-  boolean preventEchoEffect() default true;
-
-  /**
    * An event's return mode determines how the event is routed if it is re-fired after being
-   * received from a JMS destination. The default is to use the {@link #sendMode()}.
+   * received from a JMS destination. The default is to use the usual destination for the event.
    */
-  ReturnMode returnMode() default ReturnMode.USE_SEND_MODE;
+  ReturnMode returnMode() default ReturnMode.ORIGINAL_DESTINATION;
 
   /**
-   * An event can be sent either via a JMS {@link Queue} or a {@link Topic}. The former is provides
-   * single-issue distribution semantics, while the latter provides broadcast semantics. The default
-   * is {@link SendMode#TOPIC}.
+   * Controls how the event is routed to receivers attached to the local {@link EventDispatch}
+   * instance. The default mode, {@link RoutingMode#REMOTE}, will prevent the event from being
+   * dispatched directly to local receivers, instead causing the event to be sent to JMS. This mode
+   * avoids the need to make a distinction between locally-originated and remote-originated events,
+   * since all events are effectively remote-originated.
    */
-  SendMode sendMode() default SendMode.TOPIC;
+  RoutingMode routingMode() default RoutingMode.REMOTE;
 
   /**
    * A subscriber can elect not to send or receive certain events by using an alternate

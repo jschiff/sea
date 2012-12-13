@@ -1,4 +1,5 @@
 package com.getperka.sea.jms;
+
 /*
  * #%L
  * Simple Event Architecture - JMS Support
@@ -39,42 +40,48 @@ public class ModeTest extends JmsTestBase {
     String data;
   }
 
-  @SubscriptionOptions(subscriptionMode = SubscriptionMode.RECEIVE,
-      returnMode = ReturnMode.RETURN_TO_SENDER)
+  @Subscriptions(@Subscription(
+      event = MyEvent.class))
+  interface Normal {}
+
+  @Subscriptions(@Subscription(
+      event = MyEvent.class,
+      options = @SubscriptionOptions(
+          subscriptionMode = SubscriptionMode.RECEIVE,
+          returnMode = ReturnMode.RETURN_TO_SENDER,
+          routingMode = RoutingMode.LOCAL)))
   interface Receiver {}
 
-  @SubscriptionOptions(subscriptionMode = SubscriptionMode.SEND)
+  @Subscriptions(@Subscription(
+      event = MyEvent.class,
+      options = @SubscriptionOptions(
+          subscriptionMode = SubscriptionMode.SEND)))
   interface Sender {}
 
   @Test(timeout = TEST_TIMEOUT)
   public void test() throws EventSubscriberException, InterruptedException {
-    subscriber(0).subscribe(MyEvent.class);
-    subscriber(1)
-        .subscribe(MyEvent.class, Receiver.class.getAnnotation(SubscriptionOptions.class));
-    subscriber(2).subscribe(MyEvent.class, Sender.class.getAnnotation(SubscriptionOptions.class));
+    dispatch(0).addGlobalDecorator(Normal.class);
+    dispatch(1).addGlobalDecorator(Receiver.class);
+    dispatch(2).addGlobalDecorator(Sender.class);
 
-    EventLatch<MyEvent> bothLatch = EventLatch.create(
-        dispatch(0), MyEvent.class, 0);
-    EventLatch<MyEvent> receiveLatch = EventLatch.create(
-        dispatch(1), MyEvent.class, 0);
-    EventLatch<MyEvent> sendLatch = EventLatch.create(
-        dispatch(2), MyEvent.class, 0);
+    EventLatch<MyEvent> normalLatch = EventLatch.create(dispatch(0), MyEvent.class, 0);
+    EventLatch<MyEvent> receiveLatch = EventLatch.create(dispatch(1), MyEvent.class, 0);
+    EventLatch<MyEvent> sendLatch = EventLatch.create(dispatch(2), MyEvent.class, 0);
 
     /*
      * First, try sending from the regularly-configured dispatch. Verify that the send-only queue
      * did not receive any
      */
-    bothLatch.reset(1);
+    normalLatch.reset(0);
     receiveLatch.reset(1);
     sendLatch.reset(0);
     MyEvent event = new MyEvent();
     dispatch(0).fire(event);
 
     // Wait for the two latches that should have received something
-    bothLatch.await();
     receiveLatch.await();
     // Same event object should be received
-    assertSame(event, bothLatch.getEventQueue().poll());
+    assertEquals(0, normalLatch.getEventQueue().size());
     assertEquals(0, sendLatch.getEventQueue().size());
     assertNotNull(receiveLatch.getEventQueue().peek());
     assertNotSame(event, receiveLatch.getEventQueue().poll());
@@ -84,12 +91,12 @@ public class ModeTest extends JmsTestBase {
      * receive-only queue will get the event.
      */
     event = new MyEvent();
-    bothLatch.reset(0);
+    normalLatch.reset(0);
     receiveLatch.reset(1);
     sendLatch.reset(0);
     dispatch(1).fire(event);
     receiveLatch.await();
-    assertEquals(0, bothLatch.getEventQueue().size());
+    assertEquals(0, normalLatch.getEventQueue().size());
     assertSame(event, receiveLatch.getEventQueue().poll());
     assertEquals(0, sendLatch.getEventQueue().size());
 
@@ -98,23 +105,22 @@ public class ModeTest extends JmsTestBase {
      * return queue still works.
      */
     event = new MyEvent();
-    bothLatch.reset(1);
+    normalLatch.reset(1);
     receiveLatch.reset(1);
-    sendLatch.reset(1);
+    sendLatch.reset(0);
     dispatch(2).fire(event);
 
-    bothLatch.await();
-    assertFalse(bothLatch.getEventQueue().isEmpty());
-    assertNotSame(event, bothLatch.getEventQueue().poll());
+    normalLatch.await();
+    assertFalse(normalLatch.getEventQueue().isEmpty());
+    assertNotSame(event, normalLatch.getEventQueue().poll());
     receiveLatch.await();
     MyEvent received = receiveLatch.getEventQueue().poll();
     assertNotNull(received);
     assertNotSame(event, received);
-    sendLatch.await();
-    assertSame(event, sendLatch.getEventQueue().poll());
+    assertEquals(0, sendLatch.getEventQueue().size());
 
     // Resend event
-    bothLatch.reset(0);
+    normalLatch.reset(0);
     receiveLatch.reset(1);
     sendLatch.reset(1);
     received.data = "Hello world!";

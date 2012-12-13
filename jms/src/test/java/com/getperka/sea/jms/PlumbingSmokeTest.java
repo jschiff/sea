@@ -37,11 +37,19 @@ import javax.jms.Topic;
 import org.junit.Test;
 
 import com.getperka.sea.Event;
+import com.getperka.sea.jms.PlumbingSmokeTest.MyQueueEvent;
+import com.getperka.sea.jms.PlumbingSmokeTest.MyTopicEvent;
 import com.getperka.sea.util.EventLatch;
 
+@Subscriptions({
+    @Subscription(
+        event = MyQueueEvent.class,
+        options = @SubscriptionOptions(
+            destinationType = DestinationType.QUEUE, routingMode = RoutingMode.LOCAL)),
+    @Subscription(
+        event = MyTopicEvent.class) })
 public class PlumbingSmokeTest extends JmsTestBase {
 
-  @SubscriptionOptions(sendMode = SendMode.QUEUE)
   static class MyQueueEvent implements Event, Serializable {
     private static final long serialVersionUID = 1L;
   }
@@ -50,19 +58,12 @@ public class PlumbingSmokeTest extends JmsTestBase {
     private static final long serialVersionUID = 1L;
   }
 
-  @Test
-  public void testMultipleInstances() {
-    EventSubscriber subscriber2 = EventSubscribers.create(eventDispatch, connectionFactory);
-    assertNotSame(eventSubscriber, subscriber2);
-  }
-
-  @Test(timeout = TEST_TIMEOUT)
+  @Test(timeout = TEST_TIMEOUT * 1000)
   public void testQueueEventReceive() throws JMSException, EventSubscriberException,
       InterruptedException {
+
     Queue queue = testSession.createQueue(MyQueueEvent.class.getCanonicalName());
     assertEmpty(queue);
-
-    eventSubscriber.subscribe(MyQueueEvent.class);
 
     EventLatch<MyQueueEvent> receiver = EventLatch.create(eventDispatch,
         MyQueueEvent.class, 1);
@@ -88,11 +89,9 @@ public class PlumbingSmokeTest extends JmsTestBase {
   @Test(timeout = TEST_TIMEOUT)
   public void testQueueEventSend() throws EventSubscriberException, JMSException {
     Queue queue = testSession.createQueue(MyQueueEvent.class.getCanonicalName());
-
-    eventSubscriber.subscribe(MyQueueEvent.class);
+    MessageConsumer consumer = testSession.createConsumer(queue);
 
     eventDispatch.fire(new MyQueueEvent());
-    MessageConsumer consumer = testSession.createConsumer(queue);
     Message m = consumer.receive();
     assertEquals(MyQueueEvent.class, ((ObjectMessage) m).getObject().getClass());
     consumer.close();
@@ -103,8 +102,6 @@ public class PlumbingSmokeTest extends JmsTestBase {
       InterruptedException {
     Topic queue = testSession.createTopic(MyTopicEvent.class.getCanonicalName());
     MessageConsumer consumer = testSession.createConsumer(queue);
-
-    eventSubscriber.subscribe(MyTopicEvent.class);
 
     EventLatch<MyTopicEvent> receiver = EventLatch.create(eventDispatch,
         MyTopicEvent.class, 1);
@@ -134,7 +131,6 @@ public class PlumbingSmokeTest extends JmsTestBase {
   public void testTopicEventSend() throws EventSubscriberException, JMSException {
     Topic topic = testSession.createTopic(MyTopicEvent.class.getCanonicalName());
     MessageConsumer consumer = testSession.createConsumer(topic);
-    eventSubscriber.subscribe(MyTopicEvent.class);
     eventDispatch.fire(new MyTopicEvent());
     Message m = consumer.receive();
     assertEquals(MyTopicEvent.class, ((ObjectMessage) m).getObject().getClass());

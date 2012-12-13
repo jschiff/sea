@@ -25,18 +25,13 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.Serializable;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.jms.JMSException;
-
-import org.junit.Before;
 import org.junit.Test;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
-import com.getperka.sea.Receiver;
+import com.getperka.sea.jms.ReturningEventTest.MyReturningEvent;
+import com.getperka.sea.util.EventLatch;
 
 /**
  * Verify that a ReturningEvent dispatched via a topic is routed correctly when re-fired.
@@ -53,9 +48,13 @@ import com.getperka.sea.Receiver;
  *             --> stack3 --
  * </pre>
  */
+@Subscriptions(@Subscription(
+    event = MyReturningEvent.class,
+    options = @SubscriptionOptions(
+        returnMode = ReturnMode.RETURN_TO_SENDER,
+        routingMode = RoutingMode.LOCAL)))
 public class ReturningEventTest extends JmsTestBase {
 
-  @SubscriptionOptions(returnMode = ReturnMode.RETURN_TO_SENDER)
   static class MyReturningEvent implements Event, Serializable {
     private static final long serialVersionUID = 1L;
     private transient boolean isLocal = true;
@@ -78,60 +77,20 @@ public class ReturningEventTest extends JmsTestBase {
     }
   }
 
-  private static class EventCollector {
-    private final java.util.Queue<MyReturningEvent> collected = new ConcurrentLinkedQueue<MyReturningEvent>();
-    private final AtomicInteger numberCollected = new AtomicInteger();
-    private CountDownLatch latch = new CountDownLatch(0);
-
-    void await() throws InterruptedException {
-      latch.await();
-    }
-
-    @Receiver
-    void event(MyReturningEvent evt) {
-      collected.add(evt);
-      numberCollected.incrementAndGet();
-      latch.countDown();
-    }
-
-    void reset(int expected) {
-      collected.clear();
-      numberCollected.set(0);
-      latch = new CountDownLatch(expected);
-    }
-  }
-
-  protected EventDispatch eventDispatch2;
-
-  protected EventDispatch eventDispatch3;
-  protected EventSubscriber eventSubscriber2;
-  protected EventSubscriber eventSubscriber3;
-
-  @Override
-  @Before
-  public void before() throws JMSException {
-    super.before();
-
-    eventDispatch2 = dispatch(1);
-    eventDispatch3 = dispatch(2);
-    eventSubscriber2 = subscriber(1);
-    eventSubscriber3 = subscriber(2);
+  private static EventLatch<MyReturningEvent> latch(EventDispatch dispatch) {
+    return EventLatch.create(dispatch, MyReturningEvent.class, 0);
   }
 
   @Test(timeout = TEST_TIMEOUT)
   public void test() throws EventSubscriberException, InterruptedException {
-    EventCollector collector = new EventCollector();
-    EventCollector collector2 = new EventCollector();
-    EventCollector collector3 = new EventCollector();
+    EventLatch<MyReturningEvent> collector = latch(dispatch(0));
+    EventLatch<MyReturningEvent> collector2 = latch(dispatch(1));
+    EventLatch<MyReturningEvent> collector3 = latch(dispatch(2));
 
     // Wire first two event subscribers
-    eventDispatch.register(collector);
-    eventDispatch2.register(collector2);
-    eventDispatch3.register(collector3);
-
-    eventSubscriber.subscribe(MyReturningEvent.class);
-    eventSubscriber2.subscribe(MyReturningEvent.class);
-    eventSubscriber3.subscribe(MyReturningEvent.class);
+    dispatch(0).register(collector);
+    dispatch(1).register(collector2);
+    dispatch(2).register(collector3);
 
     // Fire the event from stack 1
     MyReturningEvent evt = new MyReturningEvent();
@@ -142,14 +101,14 @@ public class ReturningEventTest extends JmsTestBase {
 
     // Verify the event was collected in stack 2
     collector2.await();
-    MyReturningEvent evt2 = collector2.collected.poll();
+    MyReturningEvent evt2 = collector2.getEventQueue().poll();
     assertEquals("1", evt2.getMessage());
     assertFalse(evt2.isLocal());
     // assertNotNull(evt2.getReturnQueueName());
 
     // Verify the event was collected in stack 3
     collector3.await();
-    MyReturningEvent evt3 = collector3.collected.poll();
+    MyReturningEvent evt3 = collector3.getEventQueue().poll();
     assertEquals("1", evt3.getMessage());
     assertFalse(evt3.isLocal());
     // assertNotNull(evt3.getReturnQueueName());
@@ -160,26 +119,27 @@ public class ReturningEventTest extends JmsTestBase {
     collector3.reset(1);
     evt2.setMessage("2");
     evt2.setLocal(true);
-    eventDispatch2.fire(evt2);
+    dispatch(1).fire(evt2);
     evt3.setMessage("3");
     evt3.setLocal(true);
-    eventDispatch3.fire(evt3);
+    dispatch(2).fire(evt3);
 
     // Verify the event was collected in stack 1
     collector.await();
-    assertEquals(2, collector.numberCollected.get());
-    while (!collector.collected.isEmpty()) {
-      MyReturningEvent returnedEvent = collector.collected.poll();
-      assertTrue("2".equals(returnedEvent.getMessage()) || "3".equals(returnedEvent.getMessage()));
+    assertEquals(2, collector.getEventQueue().size());
+    while (!collector.getEventQueue().isEmpty()) {
+      MyReturningEvent returnedEvent = collector.getEventQueue().poll();
+      String message = returnedEvent.getMessage();
+      assertTrue(message, "2".equals(message) || "3".equals(message));
     }
 
     // Verify the event counts in the other stacks was from the local re-firing
     collector2.await();
-    assertEquals(1, collector2.numberCollected.get());
-    assertTrue(collector2.collected.poll().isLocal());
+    assertEquals(1, collector2.getEventQueue().size());
+    assertTrue(collector2.getEventQueue().poll().isLocal());
     collector3.await();
-    assertEquals(1, collector3.numberCollected.get());
-    assertTrue(collector3.collected.poll().isLocal());
+    assertEquals(1, collector3.getEventQueue().size());
+    assertTrue(collector3.getEventQueue().poll().isLocal());
   }
 
   @Override
