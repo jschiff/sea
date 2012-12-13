@@ -24,18 +24,13 @@ import java.util.concurrent.ExecutorService;
 
 import com.getperka.sea.inject.EventModule;
 import com.google.inject.Guice;
+import com.google.inject.Module;
+import com.google.inject.util.Modules;
 
 /**
  * A factory for {@link EventDispatch} instances.
  */
 public class EventDispatchers {
-  /**
-   * Instantiates a new {@link EventDispatch} instance.
-   */
-  public static EventDispatch create() {
-    return Guice.createInjector(new EventModule()).getInstance(EventDispatch.class);
-  }
-
   /**
    * Instantiates a new {@link EventDispatch} instance that uses the provided
    * {@link ExecutorService} for scheduling executions.
@@ -47,6 +42,14 @@ public class EventDispatchers {
         return svc;
       }
     }).getInstance(EventDispatch.class);
+  }
+
+  /**
+   * Instantiates a new {@link EventDispatch} instance.
+   */
+  public static EventDispatch create(Module... extraModules) {
+    return Guice.createInjector(Modules.override(new EventModule()).with(extraModules))
+        .getInstance(EventDispatch.class);
   }
 
   private EventDispatchers() {}

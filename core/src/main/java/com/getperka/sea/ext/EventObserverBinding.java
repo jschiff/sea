@@ -27,13 +27,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Associates a decorator's binding annotation with the implementation.
+ * Associates an observer's binding annotation with the implementation.
  * 
- * @see EventDecorator
+ * @see EventObserver
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.ANNOTATION_TYPE })
-public @interface EventDecoratorBinding {
-  Class<? extends EventDecorator<?, ?>> value();
+public @interface EventObserverBinding {
+  Class<? extends EventObserver<?, ?>> value();
 }

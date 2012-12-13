@@ -52,25 +52,35 @@ public class BaseCompositeEvent implements CompositeEvent {
     Class<? extends Event>[] value();
   }
 
-  private Collection<Event> facets;
-  @Inject
-  private Injector injector;
-
   /**
    * Examines the event and its collection of facets and returns the first one assignable to the
    * requested type. If there are no currently-registered facets of the requested type, this method
    * will return {@code null}.
    */
-  public <E extends Event> E asEventFacet(Class<E> eventType) {
-    if (eventType.isInstance(this)) {
-      return eventType.cast(this);
+  public static <E extends Event> E asEventFacet(Class<E> eventType, Event event) {
+    if (eventType.isInstance(event)) {
+      return eventType.cast(event);
     }
-    for (Event evt : getEventFacets()) {
-      if (eventType.isInstance(evt)) {
-        return eventType.cast(evt);
+    if (event instanceof CompositeEvent) {
+      for (Event evt : ((CompositeEvent) event).getEventFacets()) {
+        if (eventType.isInstance(evt)) {
+          return eventType.cast(evt);
+        }
       }
     }
     return null;
+
+  }
+
+  private Collection<Event> facets;
+  @Inject
+  private Injector injector;
+
+  /**
+   * Delegates to {@link #asEventFacet(Class, Event)}.
+   */
+  public <E extends Event> E asEventFacet(Class<E> eventType) {
+    return asEventFacet(eventType, this);
   }
 
   @Override

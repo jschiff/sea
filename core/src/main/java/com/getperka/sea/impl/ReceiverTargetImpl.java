@@ -41,7 +41,7 @@ import javax.inject.Provider;
 import org.slf4j.Logger;
 
 import com.getperka.sea.BadReceiverException;
-import com.getperka.sea.CompositeEvent;
+import com.getperka.sea.BaseCompositeEvent;
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.EventDecorator;
@@ -207,25 +207,18 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
           // Does the decorator accept the annotation that we're currently looking at?
           if (TypeLiteral.get(typeArgs[0]).getRawType()
               .isAssignableFrom(annotation.annotationType())) {
-            Class<?> expectedEventType = TypeLiteral.get(typeArgs[1]).getRawType();
-            // Is the base event type assignable?
-            if (expectedEventType.isInstance(event)) {
-              toInvoke = eventDecorator.wrap(decoratorContexts.get());
-            } else if (event instanceof CompositeEvent) {
-              // If it's a composite event, are any of its facets assignable?
-              CompositeEvent composite = (CompositeEvent) event;
-              Collection<? extends Event> eventFacets = composite.getEventFacets();
-              if (eventFacets != null) {
-                for (Event facet : eventFacets) {
-                  if (expectedEventType.isInstance(facet)) {
-                    // Swap the facet into the context
-                    DecoratorContext ctx = decoratorContexts.get();
-                    ctx.setEvent(facet);
-                    toInvoke = eventDecorator.wrap(ctx);
-                  }
-                }
-              }
+            // Determine the Event type that the decorator wants
+            Class<? extends Event> expectedEventType =
+                TypeLiteral.get(typeArgs[1]).getRawType().asSubclass(Event.class);
+            // Cast or extract the desired event facet
+            Event desiredFacet = BaseCompositeEvent.asEventFacet(expectedEventType, event);
+            if (desiredFacet == null) {
+              continue;
             }
+            // Create the context, set the facet, and wrap
+            DecoratorContext ctx = decoratorContexts.get();
+            ctx.setEvent(desiredFacet);
+            toInvoke = eventDecorator.wrap(ctx);
           }
         } finally {
           decoratorScope.exit();

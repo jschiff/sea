@@ -48,6 +48,7 @@ public class DispatchImpl implements EventDispatch, HasInjector {
   private Collection<AnnotatedElement> globalDecorators;
   private Injector injector;
   private Provider<Invocation> invocations;
+  private ObserverMap observers;
   private Logger logger;
   private DispatchMap map;
   private ExecutorService service;
@@ -58,6 +59,7 @@ public class DispatchImpl implements EventDispatch, HasInjector {
   @Override
   public void addGlobalDecorator(AnnotatedElement element) {
     globalDecorators.add(element);
+    observers.register(element);
   }
 
   @Override
@@ -68,6 +70,9 @@ public class DispatchImpl implements EventDispatch, HasInjector {
   @Override
   public void fire(Event event, Object context) {
     if (shutdown || event == null) {
+      return;
+    }
+    if (!observers.shouldFire(event, context)) {
       return;
     }
     List<Invocation> allInvocation = getInvocations(event, context);
@@ -98,8 +103,11 @@ public class DispatchImpl implements EventDispatch, HasInjector {
 
   @Override
   public void shutdown() {
+    if (shutdown) {
+      return;
+    }
     shutdown = true;
-    service.shutdown();
+    observers.shutdown();
   }
 
   List<Invocation> getInvocations(Event event, Object context) {
@@ -133,9 +141,10 @@ public class DispatchImpl implements EventDispatch, HasInjector {
   }
 
   @Inject
-  void inject(@GlobalDecorators Collection<AnnotatedElement> globalDecorators,
+  void inject(ObserverMap filters, @GlobalDecorators Collection<AnnotatedElement> globalDecorators,
       Injector injector, Provider<Invocation> invocations, @EventLogger Logger logger,
       DispatchMap map, @EventExecutor ExecutorService service) {
+    this.observers = filters;
     this.globalDecorators = globalDecorators;
     this.injector = injector;
     this.invocations = invocations;
