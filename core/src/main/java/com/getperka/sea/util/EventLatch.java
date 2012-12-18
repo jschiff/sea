@@ -29,6 +29,8 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import javax.inject.Inject;
+
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.Receiver;
@@ -95,6 +97,11 @@ public abstract class EventLatch<T extends Event> {
     reset(count);
   }
 
+  @Inject
+  EventLatch(EventDispatch dispatch) {
+    this(dispatch, 0);
+  }
+
   /**
    * Wait until the requested number of events have been received. If the latch is not collecting
    * events, this method will return immediately.
@@ -128,6 +135,30 @@ public abstract class EventLatch<T extends Event> {
     } finally {
       countingLock.unlock();
     }
+  }
+
+  /**
+   * A convenience method to reset the latch to receive one event, fire an event, wait up to the
+   * specified amount of time, and return the first matching event.
+   * 
+   * @param toFire the event to fire
+   * @param duration the maximum number of time units to wait
+   * @param unit the length of {@code duration}
+   * @return the single received event or {@code null} if the time period elapsed or the thread was
+   *         interrupted
+   */
+  public T awaitSingleEventAfter(Event toFire, long duration, TimeUnit unit) {
+    reset(1);
+    dispatch.fire(toFire);
+    try {
+      await(duration, unit);
+      return received.poll();
+    } catch (InterruptedException ignored) {
+      // Don't care
+    } finally {
+      reset(0);
+    }
+    return null;
   }
 
   /**
@@ -209,6 +240,13 @@ public abstract class EventLatch<T extends Event> {
     } finally {
       countingLock.unlock();
     }
+  }
+
+  /**
+   * Returns the {@link EventDispatch} instance the latch was configured with.
+   */
+  protected EventDispatch getEventDispatch() {
+    return dispatch;
   }
 
   boolean isCollecting() {

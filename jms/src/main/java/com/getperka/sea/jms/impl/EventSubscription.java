@@ -66,7 +66,7 @@ public class EventSubscription implements MessageListener {
     try {
       messageConsumer.close();
     } catch (JMSException e) {
-      logger.warn("Could not close MessageConsumer", e);
+      // Probably already closed
     }
   }
 
