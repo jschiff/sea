@@ -25,6 +25,7 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -57,7 +58,10 @@ public class ObserverMap {
    * {@link EventDispatch#addGlobalDecorator}.
    */
   public void register(AnnotatedElement element) {
-    for (Annotation annotation : element.getAnnotations()) {
+    List<Annotation> orderedAnnotation = DecoratorMap.orderedAnnotations(element);
+    Collections.reverse(orderedAnnotation);
+
+    for (Annotation annotation : orderedAnnotation) {
       Class<? extends EventObserver<?, ?>> observerType = bindingMap.getObserver(annotation);
       if (observerType == null) {
         continue;
@@ -137,6 +141,13 @@ public class ObserverMap {
       observer.shutdown();
     }
     observers.clear();
+  }
+
+  /**
+   * Visible for testing.
+   */
+  List<Annotation> getAnnotations() {
+    return annotations;
   }
 
   @Inject

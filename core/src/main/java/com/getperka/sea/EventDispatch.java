@@ -25,7 +25,9 @@ import java.lang.reflect.Method;
 
 import javax.inject.Provider;
 
+import com.getperka.sea.ext.DecoratorOrder;
 import com.getperka.sea.ext.EventDecorator;
+import com.getperka.sea.ext.EventObserver;
 
 /**
  * This is the main interface for the Simple Event Architecture.
@@ -34,8 +36,8 @@ import com.getperka.sea.ext.EventDecorator;
  */
 public interface EventDispatch {
   /**
-   * Apply {@link EventDecorator} binding annotations on a {@link Class} or {@link Method} to all
-   * event dispatches.
+   * Apply {@link EventDecorator} or {@link EventObserver} binding annotations on a {@link Class},
+   * {@link Method}, or {@link Package} to all event dispatches.
    * <p>
    * For example, to enable simple logging of all events:
    * 
@@ -50,7 +52,9 @@ public interface EventDispatch {
    * }
    * </pre>
    * 
-   * Multiple invocations register progressively "more global" decorations.
+   * The order in which decorators or observers are applied is undefined unless a
+   * {@link DecoratorOrder} annotation is also present. Multiple invocations of this method register
+   * progressively "more global" decorations.
    */
   void addGlobalDecorator(AnnotatedElement element);
 

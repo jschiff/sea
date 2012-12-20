@@ -1,4 +1,5 @@
 package com.getperka.sea.impl;
+
 /*
  * #%L
  * Simple Event Architecture - Core
@@ -23,13 +24,18 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
 
 import com.getperka.sea.Event;
+import com.getperka.sea.ext.DecoratorOrder;
 import com.getperka.sea.ext.EventDecorator;
 import com.google.inject.Injector;
 
@@ -38,10 +44,30 @@ import com.google.inject.Injector;
  */
 @Singleton
 public class DecoratorMap {
+  /**
+   * Extract all annotations declared on the element, partially sorted by a {@link DecoratorOrder}.
+   */
+  static List<Annotation> orderedAnnotations(AnnotatedElement elt) {
+    Set<Annotation> orderedAnnotations = new LinkedHashSet<Annotation>();
+    DecoratorOrder order = elt.getAnnotation(DecoratorOrder.class);
+    if (order == null) {
+      return Arrays.asList(elt.getDeclaredAnnotations());
+    }
+    for (Class<? extends Annotation> lookFor : order.value()) {
+      Annotation a = elt.getAnnotation(lookFor);
+      if (a != null) {
+        orderedAnnotations.add(a);
+      }
+    }
+    orderedAnnotations.addAll(Arrays.asList(elt.getDeclaredAnnotations()));
+    return new ArrayList<Annotation>(orderedAnnotations);
+  }
+
   private BindingMap bindingMap;
   private final List<Annotation> globalAnnotations = new ArrayList<Annotation>();
   private final List<Provider<EventDecorator<Annotation, Event>>> globalProviders =
       new ArrayList<Provider<EventDecorator<Annotation, Event>>>();
+
   private Injector injector;
 
   protected DecoratorMap() {}
@@ -80,8 +106,15 @@ public class DecoratorMap {
 
   private void compute(AnnotatedElement elt, List<Annotation> annotations,
       List<Provider<EventDecorator<Annotation, Event>>> providers) {
-    // Examine each annotation on the incoming element
-    for (Annotation annotation : elt.getDeclaredAnnotations()) {
+    /*
+     * Get a partially-ordered list of annotations, then reverse it so that the user's
+     * highest-priority decorators are applied last (and therefore their wrapped callable is
+     * executed first).
+     */
+    List<Annotation> orderedAnnotations = orderedAnnotations(elt);
+    Collections.reverse(orderedAnnotations);
+
+    for (Annotation annotation : orderedAnnotations) {
       // Start with any externally-defined annotation
       Class<? extends EventDecorator<?, ?>> decoratorType =
           bindingMap.getDecorator(annotation);
