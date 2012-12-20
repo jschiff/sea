@@ -1,7 +1,7 @@
-package com.getperka.sea.inject;
+package com.getperka.sea.ext;
 /*
  * #%L
- * Simple Event Architecture
+ * Simple Event Architecture - Core
  * %%
  * Copyright (C) 2012 Perka Inc.
  * %%
@@ -19,18 +19,35 @@ package com.getperka.sea.inject;
  * #L%
  */
 
-import java.lang.annotation.ElementType;
+import java.lang.annotation.Annotation;
+import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.google.inject.BindingAnnotation;
+import com.getperka.sea.impl.NoOpTarget;
 
 /**
- * A binding annotation for a {@code Collection<AnnotatedElement>} that holds the global decorator
- * configuration elements.
+ * A binding from an arbitrary annotation to an {@link EventDecorator} or {@link EventObserver}.
+ * 
+ * @see ExternalBindings
  */
-@BindingAnnotation
+@Documented
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ ElementType.TYPE, ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER })
-public @interface GlobalDecorators {}
+@Target({})
+public @interface ExternalBinding {
+  /**
+   * The external annotation to be bound.
+   */
+  Class<? extends Annotation> annotation();
+
+  /**
+   * An {@link EventDecorator} that the annotation should trigger.
+   */
+  Class<? extends EventDecorator<?, ?>> decorator() default NoOpTarget.class;
+
+  /**
+   * An {@link EventObserver} that the annotation should trigger.
+   */
+  Class<? extends EventObserver<?, ?>> observer() default NoOpTarget.class;
+}

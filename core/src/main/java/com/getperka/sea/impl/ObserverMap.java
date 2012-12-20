@@ -36,7 +36,6 @@ import com.getperka.sea.BaseCompositeEvent;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.ext.EventObserver;
-import com.getperka.sea.ext.EventObserverBinding;
 import com.google.inject.Injector;
 import com.google.inject.TypeLiteral;
 
@@ -45,10 +44,10 @@ import com.google.inject.TypeLiteral;
  */
 @Singleton
 public class ObserverMap {
+  private BindingMap bindingMap;
   private final List<Annotation> annotations = new ArrayList<Annotation>();
   private final List<EventObserver<Annotation, Event>> observers =
       new ArrayList<EventObserver<Annotation, Event>>();
-
   private Injector injector;
 
   protected ObserverMap() {}
@@ -59,15 +58,14 @@ public class ObserverMap {
    */
   public void register(AnnotatedElement element) {
     for (Annotation annotation : element.getAnnotations()) {
-      EventObserverBinding bindingAnnotation = annotation.annotationType().getAnnotation(
-          EventObserverBinding.class);
-      if (bindingAnnotation == null) {
+      Class<? extends EventObserver<?, ?>> observerType = bindingMap.getObserver(annotation);
+      if (observerType == null) {
         continue;
       }
+
       @SuppressWarnings("unchecked")
       Provider<EventObserver<Annotation, Event>> provider =
-          (Provider<EventObserver<Annotation, Event>>) injector.getProvider(
-              bindingAnnotation.value());
+          (Provider<EventObserver<Annotation, Event>>) injector.getProvider(observerType);
 
       EventObserver<Annotation, Event> observer = provider.get();
       observer.initialize(annotation);
@@ -142,7 +140,8 @@ public class ObserverMap {
   }
 
   @Inject
-  void inject(Injector injector) {
+  void inject(BindingMap bindingMap, Injector injector) {
+    this.bindingMap = bindingMap;
     this.injector = injector;
   }
 }

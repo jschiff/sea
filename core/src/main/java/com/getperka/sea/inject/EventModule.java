@@ -21,10 +21,7 @@ package com.getperka.sea.inject;
  */
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
-import java.util.Collection;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -39,9 +36,7 @@ import com.getperka.sea.EventDispatch;
 import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.impl.DispatchImpl;
-import com.getperka.sea.impl.DispatchMap;
 import com.getperka.sea.impl.DispatchResultImpl;
-import com.getperka.sea.impl.Invocation;
 import com.getperka.sea.impl.ReceiverTargetImpl;
 import com.getperka.sea.impl.SettableReceiverTarget;
 import com.getperka.sea.impl.SettableRegistration;
@@ -65,8 +60,6 @@ public class EventModule extends AbstractModule {
     bindReceiverScope();
     bindDecoratorScope();
 
-    bind(DispatchMap.class).asEagerSingleton();
-
     bind(DispatchResult.class).to(DispatchResultImpl.class);
 
     bind(EventDispatch.class).to(DispatchImpl.class);
@@ -75,12 +68,6 @@ public class EventModule extends AbstractModule {
     bind(ExecutorService.class)
         .annotatedWith(EventExecutor.class)
         .toInstance(executorService());
-
-    bind(new TypeLiteral<Collection<AnnotatedElement>>() {})
-        .annotatedWith(GlobalDecorators.class)
-        .toInstance(new ConcurrentLinkedQueue<AnnotatedElement>());
-
-    bind(Invocation.class);
 
     bind(Logger.class)
         .annotatedWith(EventLogger.class)

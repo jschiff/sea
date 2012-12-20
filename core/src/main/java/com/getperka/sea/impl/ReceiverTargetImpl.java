@@ -21,14 +21,12 @@ package com.getperka.sea.impl;
  */
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -45,12 +43,10 @@ import com.getperka.sea.BaseCompositeEvent;
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.EventDecorator;
-import com.getperka.sea.ext.EventDecoratorBinding;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.CurrentEvent;
 import com.getperka.sea.inject.DecoratorScope;
 import com.getperka.sea.inject.EventLogger;
-import com.getperka.sea.inject.GlobalDecorators;
 import com.getperka.sea.inject.ReceiverInstance;
 import com.getperka.sea.inject.ReceiverScope;
 import com.getperka.sea.inject.ReceiverScoped;
@@ -140,6 +136,10 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
   private final List<Provider<EventDecorator<Annotation, Event>>> decoratorProviders =
       new ArrayList<Provider<EventDecorator<Annotation, Event>>>();
   /**
+   * Holds information about annotation bindings.
+   */
+  private DecoratorMap decoratorMap;
+  /**
    * Scope data for constructing {@link EventDecorator} instances.
    */
   private DecoratorScope decoratorScope;
@@ -151,10 +151,6 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
    * The type of event that the ReceiverTarget expects to receive.
    */
   private Class<? extends Event> eventType;
-  /**
-   * Injected configuration for top-level decorators.
-   */
-  private Collection<AnnotatedElement> globalDecorators;
   /**
    * Used to retrieve references to providers.
    */
@@ -311,17 +307,17 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
   @Inject
   void inject(
       Provider<DecoratorContext> decoratorContexts,
+      DecoratorMap decoratorMap,
       DecoratorScope decoratorScope,
       ReceiverScope eventScope,
-      @GlobalDecorators Collection<AnnotatedElement> globalDecorators,
       Injector injector,
       @EventLogger Logger logger,
       Provider<DispatchResult> results,
       Provider<Work> works) {
     this.decoratorContexts = decoratorContexts;
+    this.decoratorMap = decoratorMap;
     this.decoratorScope = decoratorScope;
     this.eventScope = eventScope;
-    this.globalDecorators = globalDecorators;
     this.injector = injector;
     this.logger = logger;
     this.results = results;
@@ -331,30 +327,12 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
   private void computeDecorators() {
     decoratorAnnotations.clear();
     decoratorProviders.clear();
-    computeDecorators(method);
-    computeDecorators(method.getDeclaringClass());
-    computeDecorators(method.getDeclaringClass().getPackage());
-    for (AnnotatedElement global : globalDecorators) {
-      computeDecorators(global);
-    }
-    assert decoratorAnnotations.size() == decoratorProviders.size();
+    decoratorMap.computeDecorators(method, decoratorAnnotations, decoratorProviders);
   }
 
-  private void computeDecorators(AnnotatedElement elt) {
-    for (final Annotation a : elt.getDeclaredAnnotations()) {
-      EventDecoratorBinding binding = a.annotationType().getAnnotation(EventDecoratorBinding.class);
-      if (binding != null) {
-        Class<? extends EventDecorator<?, ?>> clazz = binding.value();
-        // Get the provider and add it to the accumulators
-        @SuppressWarnings("unchecked")
-        Provider<EventDecorator<Annotation, Event>> provider =
-            (Provider<EventDecorator<Annotation, Event>>) injector.getProvider(clazz);
-        decoratorAnnotations.add(a);
-        decoratorProviders.add(provider);
-      }
-    }
-  }
-
+  /**
+   * Compute the providers for the arguments of the method to invoke.
+   */
   private void computeProviders() {
     Key<Event> keyCurrentEvent = Key.get(Event.class, CurrentEvent.class);
     Annotation[][] annotations = method.getParameterAnnotations();

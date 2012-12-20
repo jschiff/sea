@@ -22,7 +22,6 @@ package com.getperka.sea.impl;
 
 import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -39,13 +38,13 @@ import com.getperka.sea.ext.DispatchCompleteEvent;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.EventExecutor;
 import com.getperka.sea.inject.EventLogger;
-import com.getperka.sea.inject.GlobalDecorators;
 import com.google.inject.Injector;
 
 @Singleton
 public class DispatchImpl implements EventDispatch, HasInjector {
 
-  private Collection<AnnotatedElement> globalDecorators;
+  private BindingMap bindingMap;
+  private DecoratorMap decoratorMap;
   private Injector injector;
   private Provider<Invocation> invocations;
   private ObserverMap observers;
@@ -58,7 +57,8 @@ public class DispatchImpl implements EventDispatch, HasInjector {
 
   @Override
   public void addGlobalDecorator(AnnotatedElement element) {
-    globalDecorators.add(element);
+    bindingMap.register(element);
+    decoratorMap.register(element);
     observers.register(element);
   }
 
@@ -141,15 +141,16 @@ public class DispatchImpl implements EventDispatch, HasInjector {
   }
 
   @Inject
-  void inject(ObserverMap filters, @GlobalDecorators Collection<AnnotatedElement> globalDecorators,
-      Injector injector, Provider<Invocation> invocations, @EventLogger Logger logger,
-      DispatchMap map, @EventExecutor ExecutorService service) {
-    this.observers = filters;
-    this.globalDecorators = globalDecorators;
+  void inject(BindingMap bindingMap, DecoratorMap decoratorMap, Injector injector,
+      Provider<Invocation> invocations, @EventLogger Logger logger, DispatchMap map,
+      ObserverMap observerMap, @EventExecutor ExecutorService service) {
+    this.bindingMap = bindingMap;
+    this.decoratorMap = decoratorMap;
     this.injector = injector;
     this.invocations = invocations;
     this.logger = logger;
     this.map = map;
+    this.observers = observerMap;
     this.service = service;
   }
 }
