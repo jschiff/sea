@@ -180,6 +180,10 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
   public DispatchResult dispatch(Event event, Object context) {
     eventScope.enter(event, this, instanceProvider, context);
     try {
+      // If this is an instance target without an instance, don't do any work
+      if (instanceProvider != null && !eventScope.hasReceiverInstance()) {
+        return results.get();
+      }
 
       Callable<Object> toInvoke = works.get();
 

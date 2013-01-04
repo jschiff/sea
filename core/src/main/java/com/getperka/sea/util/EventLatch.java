@@ -206,7 +206,7 @@ public abstract class EventLatch<T extends Event> {
       int previousCount = this.count.getAndSet(count);
 
       if (previousCount == 0 && count > 0) {
-        eventRegistration = dispatch.register(this);
+        eventRegistration = dispatch.registerWeakly(this);
       } else if (count == 0) {
         finishedCollection.signalAll();
         if (eventRegistration != null) {

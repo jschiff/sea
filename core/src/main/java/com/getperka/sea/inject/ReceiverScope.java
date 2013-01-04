@@ -77,7 +77,10 @@ public class ReceiverScope extends BaseScope {
       javax.inject.Provider<?> receiverInstance, Object context) {
     Frame frame = new Frame(event, receiverTarget, context);
     frameStack.get().push(frame);
-    // Slightly delay instantiation of the receiver instance until the frame is installed
+    /*
+     * Slightly delay instantiation of the receiver instance until the frame is installed. This
+     * ensures that the receiver instance can use @ReceiverScoped values.
+     */
     Object instance = receiverInstance == null ? null : receiverInstance.get();
     if (instance == null) {
       instance = NULL;
@@ -87,6 +90,13 @@ public class ReceiverScope extends BaseScope {
 
   public void exit() {
     frameStack.get().pop();
+  }
+
+  /**
+   * Returns {@code true} if the {@link ReceiverInstance} binding is non-{@code null}.
+   */
+  public boolean hasReceiverInstance() {
+    return !NULL.equals(frameStack.get().peek().values.get(receiverInstanceKey));
   }
 
   public boolean inReceiver() {

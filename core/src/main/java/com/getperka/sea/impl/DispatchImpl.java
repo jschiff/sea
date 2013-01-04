@@ -102,6 +102,11 @@ public class DispatchImpl implements EventDispatch, HasInjector {
   }
 
   @Override
+  public Registration registerWeakly(Object receiver) {
+    return map.registerWeakly(receiver);
+  }
+
+  @Override
   public void shutdown() {
     if (shutdown) {
       return;

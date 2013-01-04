@@ -95,12 +95,22 @@ public interface EventDispatch {
       throws BadReceiverException;
 
   /**
-   * Register a singleton receiver. Only {@link Receiver} methods declared in the object's class
-   * will be registered.
+   * Register an instance receiver. Only {@link Receiver} methods declared in the object's class
+   * will be registered. Multiple instances of the same type of receiver may be registered.
    * 
    * @throws BadReceiverException if an unsatisfactory {@code @Receiver} declaration is encountered
    */
   Registration register(Object receiver) throws BadReceiverException;
+
+  /**
+   * Register an instance receiver while still allowing it to be garbage-collected. This is
+   * appropriate for receivers whose lifetimes are not strictly bounded by the duration of their
+   * registration. The registration will be canceled once the receiver has become weakly-referenced
+   * and is garbage-collected. Otherwise, this method behaves similar to {@link #register(Object)}.
+   * 
+   * @throws BadReceiverException if an unsatisfactory {@code @Receiver} declaration is encountered
+   */
+  Registration registerWeakly(Object receiver) throws BadReceiverException;
 
   /**
    * Prevents any further events from being dispatched. Events that are queued will be dropped.
