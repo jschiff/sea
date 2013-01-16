@@ -29,6 +29,8 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
@@ -65,9 +67,12 @@ public class DecoratorMap {
 
   private BindingMap bindingMap;
   private final List<Annotation> globalAnnotations = new ArrayList<Annotation>();
+  /**
+   * Prevents concurrent modification of {@link #globalAnnotations} and {@link #globalProviders}.
+   */
+  private final ReadWriteLock globalLock = new ReentrantReadWriteLock();
   private final List<Provider<EventDecorator<Annotation, Event>>> globalProviders =
       new ArrayList<Provider<EventDecorator<Annotation, Event>>>();
-
   private Injector injector;
 
   protected DecoratorMap() {}
@@ -86,16 +91,26 @@ public class DecoratorMap {
     compute(method, annotations, providers);
     compute(method.getDeclaringClass(), annotations, providers);
     compute(method.getDeclaringClass().getPackage(), annotations, providers);
-    annotations.addAll(globalAnnotations);
-    providers.addAll(globalProviders);
+    globalLock.readLock().lock();
+    try {
+      annotations.addAll(globalAnnotations);
+      providers.addAll(globalProviders);
+    } finally {
+      globalLock.readLock().unlock();
+    }
   }
 
   /**
    * Register global decorators.
    */
   public void register(AnnotatedElement element) {
-    compute(element, globalAnnotations, globalProviders);
-    assert globalAnnotations.size() == globalProviders.size();
+    globalLock.writeLock().lock();
+    try {
+      compute(element, globalAnnotations, globalProviders);
+      assert globalAnnotations.size() == globalProviders.size();
+    } finally {
+      globalLock.writeLock().unlock();
+    }
   }
 
   @Inject

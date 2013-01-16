@@ -25,9 +25,9 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
+import java.util.ConcurrentModificationException;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
@@ -45,11 +45,24 @@ import com.google.inject.TypeLiteral;
  */
 @Singleton
 public class ObserverMap {
+  static class ObserverRegistration {
+    final Annotation annotation;
+    final EventObserver<Annotation, Event> observer;
+
+    public ObserverRegistration(Annotation annotation, EventObserver<Annotation, Event> observer) {
+      this.annotation = annotation;
+      this.observer = observer;
+    }
+  }
+
   private BindingMap bindingMap;
-  private final List<Annotation> annotations = new ArrayList<Annotation>();
-  private final List<EventObserver<Annotation, Event>> observers =
-      new ArrayList<EventObserver<Annotation, Event>>();
   private Injector injector;
+  /**
+   * The ordered list of active observers. Uses a {@link CopyOnWriteArrayList} to avoid
+   * {@link ConcurrentModificationException} since new observers are rarely registered.
+   */
+  private final List<ObserverRegistration> registrations =
+      new CopyOnWriteArrayList<ObserverMap.ObserverRegistration>();
 
   protected ObserverMap() {}
 
@@ -59,7 +72,8 @@ public class ObserverMap {
    */
   public void register(AnnotatedElement element) {
     List<Annotation> orderedAnnotation = DecoratorMap.orderedAnnotations(element);
-    Collections.reverse(orderedAnnotation);
+
+    List<ObserverRegistration> newRegistrations = new ArrayList<ObserverRegistration>();
 
     for (Annotation annotation : orderedAnnotation) {
       Class<? extends EventObserver<?, ?>> observerType = bindingMap.getObserver(annotation);
@@ -74,20 +88,17 @@ public class ObserverMap {
       EventObserver<Annotation, Event> observer = provider.get();
       observer.initialize(annotation);
 
-      annotations.add(0, annotation);
-      observers.add(0, observer);
+      newRegistrations.add(new ObserverRegistration(annotation, observer));
     }
-    assert annotations.size() == observers.size();
+
+    registrations.addAll(0, newRegistrations);
   }
 
   public boolean shouldFire(final Event event, final Object context) {
     final boolean[] shouldFire = { true };
-    Iterator<Annotation> aIt = annotations.iterator();
-    Iterator<EventObserver<Annotation, Event>> pIt = observers.iterator();
-    while (aIt.hasNext() && pIt.hasNext()) {
-      final Annotation annotation = aIt.next();
-      EventObserver<Annotation, Event> filter = pIt.next();
-      // TODO: FilterScope?
+    for (ObserverRegistration registration : registrations) {
+      final Annotation annotation = registration.annotation;
+      EventObserver<Annotation, Event> filter = registration.observer;
 
       // Check provider to annotation assignability, for sanity's sake
       ParameterizedType type = (ParameterizedType) TypeLiteral.get(filter.getClass())
@@ -137,17 +148,21 @@ public class ObserverMap {
   }
 
   public void shutdown() {
-    for (EventObserver<?, ?> observer : observers) {
-      observer.shutdown();
+    for (ObserverRegistration registration : registrations) {
+      registration.observer.shutdown();
     }
-    observers.clear();
+    registrations.clear();
   }
 
   /**
    * Visible for testing.
    */
   List<Annotation> getAnnotations() {
-    return annotations;
+    List<Annotation> toReturn = new ArrayList<Annotation>(registrations.size());
+    for (ObserverRegistration registration : registrations) {
+      toReturn.add(registration.annotation);
+    }
+    return toReturn;
   }
 
   @Inject

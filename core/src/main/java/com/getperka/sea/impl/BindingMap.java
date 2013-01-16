@@ -1,4 +1,5 @@
 package com.getperka.sea.impl;
+
 /*
  * #%L
  * Simple Event Architecture - Core
@@ -21,8 +22,8 @@ package com.getperka.sea.impl;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.inject.Singleton;
 
@@ -40,10 +41,10 @@ import com.getperka.sea.ext.ExternalBindings;
 public class BindingMap {
 
   private final Map<Class<? extends Annotation>, Class<? extends EventDecorator<?, ?>>> decorators =
-      new HashMap<Class<? extends Annotation>, Class<? extends EventDecorator<?, ?>>>();
+      new ConcurrentHashMap<Class<? extends Annotation>, Class<? extends EventDecorator<?, ?>>>();
 
   private final Map<Class<? extends Annotation>, Class<? extends EventObserver<?, ?>>> observers =
-      new HashMap<Class<? extends Annotation>, Class<? extends EventObserver<?, ?>>>();
+      new ConcurrentHashMap<Class<? extends Annotation>, Class<? extends EventObserver<?, ?>>>();
 
   protected BindingMap() {}
 
