@@ -27,6 +27,9 @@ import com.google.inject.OutOfScopeException;
 import com.google.inject.Provider;
 import com.google.inject.Scope;
 
+/**
+ * A base class for implementing Guice scopes.
+ */
 public abstract class BaseScope implements Scope {
   protected static abstract class MapProvider<T> implements Provider<T> {
     private final Key<?> key;
@@ -59,7 +62,8 @@ public abstract class BaseScope implements Scope {
   class DummyProvider<T> implements Provider<T> {
     @Override
     public T get() {
-      throw new OutOfScopeException("Not in " + BaseScope.this.getClass().getSimpleName());
+      throwOutOfScopeException();
+      return null;
     }
   }
 
@@ -77,5 +81,12 @@ public abstract class BaseScope implements Scope {
   @SuppressWarnings("unchecked")
   protected <T> Provider<T> cast(Provider<?> provider) {
     return (Provider<T>) provider;
+  }
+
+  /**
+   * Subclasses may override this method to provide more helpful error messages.
+   */
+  protected void throwOutOfScopeException() {
+    throw new OutOfScopeException("Not in " + getClass().getSimpleName());
   }
 }
