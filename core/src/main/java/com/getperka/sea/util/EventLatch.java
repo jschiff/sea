@@ -109,10 +109,9 @@ public abstract class EventLatch<T extends Event> {
   public void await() throws InterruptedException {
     countingLock.lock();
     try {
-      if (!isCollecting()) {
-        return;
+      while (isCollecting()) {
+        finishedCollection.await();
       }
-      finishedCollection.await();
     } finally {
       countingLock.unlock();
     }
@@ -168,10 +167,9 @@ public abstract class EventLatch<T extends Event> {
   public void awaitUninterruptibly() {
     countingLock.lock();
     try {
-      if (!isCollecting()) {
-        return;
+      while (isCollecting()) {
+        finishedCollection.awaitUninterruptibly();
       }
-      finishedCollection.awaitUninterruptibly();
     } finally {
       countingLock.unlock();
     }

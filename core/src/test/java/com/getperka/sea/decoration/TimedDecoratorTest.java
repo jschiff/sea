@@ -49,7 +49,9 @@ public class TimedDecoratorTest {
     @Timed(10)
     synchronized void sleep(Event event) {
       try {
-        wait();
+        for (;;) {
+          wait();
+        }
       } catch (InterruptedException e) {
         interrupted = true;
       } finally {
@@ -90,7 +92,9 @@ public class TimedDecoratorTest {
     }
 
     synchronized void doWait() throws TimeoutError, InterruptedException {
-      wait();
+      for (;;) {
+        wait();
+      }
     }
 
   }
@@ -103,7 +107,9 @@ public class TimedDecoratorTest {
     TimeoutError caught;
 
     void doWait() throws TimeoutError, InterruptedException {
-      wait();
+      for (;;) {
+        wait();
+      }
     }
 
     @Receiver

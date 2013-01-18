@@ -89,6 +89,7 @@ public abstract class Sequencer<T> implements Callable<T> {
     if (dispatch == null) {
       throw new IllegalStateException("Must call setEventDispatch() before executing");
     }
+    Registration registration = null;
     /*
      * Acquire the semaphore for this method. It ensures that only one thread at a time can enter
      * this method or wait for a specific call to finish(). Also grab the lock which allows us to
@@ -96,14 +97,16 @@ public abstract class Sequencer<T> implements Callable<T> {
      */
     callSemaphore.acquireUninterruptibly();
     executingLock.lock();
-    isExecuting = true;
-    // Register for events
-    Registration registration = dispatch.register(this);
     try {
+      isExecuting = true;
+      // Register for events
+      registration = dispatch.register(this);
       // Start the work
       start();
       // Wait until finish has been called
-      done.awaitUninterruptibly();
+      while (isExecuting) {
+        done.awaitUninterruptibly();
+      }
       // Maybe throw a failure exception
       if (toThrow != null) {
         throw toThrow;
@@ -111,14 +114,16 @@ public abstract class Sequencer<T> implements Callable<T> {
       // Return the value
       return toReturn;
     } finally {
+      // Release the lock on isExecuting, which will have been cleared by finish() / fail()
+      executingLock.unlock();
       // Don't retain the value being returned
       toReturn = null;
       toThrow = null;
       // Stop receiving events
-      registration.cancel();
-      // Clean up the lock count
-      executingLock.unlock();
-      // Allow new callers into call()
+      if (registration != null) {
+        registration.cancel();
+      }
+      // At last, allow new callers into call()
       callSemaphore.release();
     }
   }
@@ -155,21 +160,27 @@ public abstract class Sequencer<T> implements Callable<T> {
 
   protected void fail(String message, Throwable cause) {
     executingLock.lock();
-    checkExecuting();
-    isExecuting = false;
-    toThrow = new SequenceFailureException(message, cause);
-    toThrow.fillInStackTrace();
-    done.signalAll();
-    executingLock.unlock();
+    try {
+      checkExecuting();
+      isExecuting = false;
+      toThrow = new SequenceFailureException(message, cause);
+      toThrow.fillInStackTrace();
+      done.signalAll();
+    } finally {
+      executingLock.unlock();
+    }
   }
 
   protected void finish(T toReturn) {
     executingLock.lock();
-    checkExecuting();
-    isExecuting = false;
-    this.toReturn = toReturn;
-    done.signalAll();
-    executingLock.unlock();
+    try {
+      checkExecuting();
+      isExecuting = false;
+      this.toReturn = toReturn;
+      done.signalAll();
+    } finally {
+      executingLock.unlock();
+    }
   }
 
   /**
