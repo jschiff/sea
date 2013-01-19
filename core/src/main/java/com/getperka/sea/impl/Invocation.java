@@ -71,6 +71,7 @@ public class Invocation implements Callable<DispatchResult> {
   private EventDispatch dispatch;
   private Event event;
   private Logger logger;
+  private InvocationManager manager;
   private ReceiverTarget target;
   private State state;
 
@@ -88,6 +89,7 @@ public class Invocation implements Callable<DispatchResult> {
     } finally {
       maybeDispatchCompleteEvent(toReturn);
       Thread.currentThread().setName("idle");
+      manager.markComplete(this);
     }
     return toReturn;
   }
@@ -117,8 +119,9 @@ public class Invocation implements Callable<DispatchResult> {
   }
 
   @Inject
-  void inject(EventDispatch dispatch, @EventLogger Logger logger) {
+  void inject(EventDispatch dispatch, InvocationManager manager, @EventLogger Logger logger) {
     this.dispatch = dispatch;
+    this.manager = manager;
     this.logger = logger;
   }
 

@@ -21,22 +21,18 @@ package com.getperka.sea.impl;
  */
 
 import java.lang.reflect.AnnotatedElement;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
-
-import org.slf4j.Logger;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.Registration;
-import com.getperka.sea.ext.DispatchCompleteEvent;
-import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.EventExecutor;
-import com.getperka.sea.inject.EventLogger;
 import com.google.inject.Injector;
 
 @Singleton
@@ -45,12 +41,11 @@ public class DispatchImpl implements EventDispatch, HasInjector {
   private BindingMap bindingMap;
   private DecoratorMap decoratorMap;
   private Injector injector;
-  private Provider<Invocation> invocations;
+  private InvocationManager invocationManager;
   private ObserverMap observers;
-  private Logger logger;
   private DispatchMap map;
   private ExecutorService service;
-  private volatile boolean shutdown;
+  private AtomicBoolean shutdown = new AtomicBoolean();
 
   protected DispatchImpl() {}
 
@@ -68,13 +63,13 @@ public class DispatchImpl implements EventDispatch, HasInjector {
 
   @Override
   public void fire(Event event, Object context) {
-    if (shutdown || event == null) {
+    if (shutdown.get() || event == null) {
       return;
     }
     if (!observers.shouldFire(event, context)) {
       return;
     }
-    List<Invocation> allInvocation = getInvocations(event, context);
+    List<Invocation> allInvocation = invocationManager.getInvocations(event, context);
     for (Invocation invocation : allInvocation) {
       service.submit(invocation);
     }
@@ -106,52 +101,26 @@ public class DispatchImpl implements EventDispatch, HasInjector {
   }
 
   @Override
+  public void setDraining(boolean drain) {
+    invocationManager.setDraining(drain);
+  }
+
+  @Override
   public void shutdown() {
-    if (shutdown) {
-      return;
+    if (shutdown.compareAndSet(false, true)) {
+      setDraining(true);
+      observers.shutdown();
     }
-    shutdown = true;
-    observers.shutdown();
   }
 
-  List<Invocation> getInvocations(Event event, Object context) {
-    Class<? extends Event> eventClass = event.getClass();
-    List<ReceiverTarget> targets = map.getTargets(eventClass);
-    List<Invocation> toReturn = new ArrayList<Invocation>();
-
-    // Fire an empty DispatchComplete if there are no receivers
-    if (targets.isEmpty() && !(event instanceof DispatchCompleteEvent)) {
-      logger.debug("No @Receiver methods that accept {} have been registered",
-          eventClass.getName());
-
-      DispatchCompleteEvent complete = new DispatchCompleteEvent();
-      complete.setSource(event);
-      fire(complete);
-      return toReturn;
-    }
-
-    Invocation.State state = new Invocation.State(targets.size());
-
-    for (ReceiverTarget target : targets) {
-      Invocation invocation = invocations.get();
-      invocation.setContext(context);
-      invocation.setEvent(event);
-      invocation.setInvocation(target);
-      invocation.setState(state);
-      toReturn.add(invocation);
-    }
-
-    return toReturn;
-  }
-
+  @Inject
   void inject(BindingMap bindingMap, DecoratorMap decoratorMap, Injector injector,
-      Provider<Invocation> invocations, @EventLogger Logger logger, DispatchMap map,
-      ObserverMap observerMap, @EventExecutor ExecutorService service) {
+      InvocationManager invocationManager, DispatchMap map, ObserverMap observerMap,
+      @EventExecutor ExecutorService service) {
     this.bindingMap = bindingMap;
     this.decoratorMap = decoratorMap;
     this.injector = injector;
-    this.invocations = invocations;
-    this.logger = logger;
+    this.invocationManager = invocationManager;
     this.map = map;
     this.observers = observerMap;
     this.service = service;

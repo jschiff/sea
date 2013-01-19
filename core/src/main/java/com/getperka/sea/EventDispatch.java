@@ -113,8 +113,17 @@ public interface EventDispatch {
   Registration registerWeakly(Object receiver) throws BadReceiverException;
 
   /**
-   * Prevents any further events from being dispatched. Events that are queued will be dropped.
-   * Events currently being dispatched will be allowed to continue.
+   * Place the EventDispatch into draining mode. When draining, any currently-pending events will be
+   * processed as usual, however new events will be discarded.
+   * <p>
+   * When {@code drain} is {@code true}, this method will block until all pending events have been
+   * received. Normal operation can be resumed by passing {@code false} to this method.
+   */
+  void setDraining(boolean drain);
+
+  /**
+   * Enables draining mode and allows all registered {@link EventObserver} instances to release
+   * their resources. Once shut down, the EventDispatch should be discarded.
    */
   void shutdown();
 }
