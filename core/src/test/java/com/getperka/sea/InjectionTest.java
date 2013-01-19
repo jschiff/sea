@@ -1,4 +1,5 @@
 package com.getperka.sea;
+
 /*
  * #%L
  * Simple Event Architecture - Core
@@ -29,6 +30,8 @@ import org.junit.Test;
 
 import com.getperka.sea.inject.ReceiverInstance;
 import com.getperka.sea.util.EventLatch;
+import com.google.inject.AbstractModule;
+import com.google.inject.name.Names;
 
 /**
  * Verifies that injecting additional values into receiver methods works correctly.
@@ -68,5 +71,55 @@ public class InjectionTest {
       });
       fail();
     } catch (BadReceiverException expected) {}
+  }
+
+  /**
+   * Test that bindings with {@link com.google.inject.name.Named} work.
+   */
+  @Test(timeout = TestConstants.testDelay)
+  public void testGuiceNamed() {
+    EventDispatch dispatch = EventDispatchers.create(new AbstractModule() {
+      @Override
+      protected void configure() {
+        bindConstant().annotatedWith(Names.named("hello")).to("Hello World!");
+      }
+    });
+
+    EventLatch<MyEvent> latch = new EventLatch<MyEvent>(dispatch, 1) {
+      @Receiver
+      void receiver(MyEvent evt, @com.google.inject.name.Named("hello") String hello) {
+        evt.ok = "Hello World!".equals(hello);
+        countDown(evt);
+      }
+    };
+    dispatch.fire(new MyEvent());
+
+    latch.awaitUninterruptibly();
+    assertTrue(latch.getEventQueue().poll().ok);
+  }
+
+  /**
+   * Test that bindings with {@link javax.inject.Named} work.
+   */
+  @Test(timeout = TestConstants.testDelay)
+  public void testJavaxNamed() {
+    EventDispatch dispatch = EventDispatchers.create(new AbstractModule() {
+      @Override
+      protected void configure() {
+        bindConstant().annotatedWith(Names.named("hello")).to("Hello World!");
+      }
+    });
+
+    EventLatch<MyEvent> latch = new EventLatch<MyEvent>(dispatch, 1) {
+      @Receiver
+      void receiver(MyEvent evt, @javax.inject.Named("hello") String hello) {
+        evt.ok = "Hello World!".equals(hello);
+        countDown(evt);
+      }
+    };
+    dispatch.fire(new MyEvent());
+
+    latch.awaitUninterruptibly();
+    assertTrue(latch.getEventQueue().poll().ok);
   }
 }

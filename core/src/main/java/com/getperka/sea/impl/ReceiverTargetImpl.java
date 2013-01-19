@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
+import javax.inject.Qualifier;
 
 import org.slf4j.Logger;
 
@@ -350,7 +351,8 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
 
       // First, see if there's a binding annotation
       for (Annotation a : annotations[i]) {
-        if (a.annotationType().isAnnotationPresent(BindingAnnotation.class)) {
+        if (a.annotationType().isAnnotationPresent(BindingAnnotation.class)
+          || a.annotationType().isAnnotationPresent(Qualifier.class)) {
           binding = a;
           break;
         }
