@@ -27,7 +27,6 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -45,6 +44,7 @@ import com.getperka.sea.Event;
 import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.ReceiverTarget;
+import com.getperka.sea.impl.DecoratorMap.DecoratorInfo;
 import com.getperka.sea.inject.CurrentEvent;
 import com.getperka.sea.inject.DecoratorScope;
 import com.getperka.sea.inject.EventLogger;
@@ -122,20 +122,9 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
   }
 
   /**
-   * The configuration annotations to be passed to the instances returned by the
-   * {@link #decoratorProviders} Providers.
-   */
-  private final List<Annotation> decoratorAnnotations = new ArrayList<Annotation>();
-  /**
    * Vends instances of {@link EventDecorator.Context}.
    */
   private Provider<DecoratorContext> decoratorContexts;
-  /**
-   * Providers for the {@link EventDecorator} types that should be applied when dispatching an event
-   * to the receiver method.
-   */
-  private final List<Provider<EventDecorator<Annotation, Event>>> decoratorProviders =
-      new ArrayList<Provider<EventDecorator<Annotation, Event>>>();
   /**
    * Holds information about annotation bindings.
    */
@@ -188,13 +177,11 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
 
       Callable<Object> toInvoke = works.get();
 
-      Iterator<Annotation> aIt = decoratorAnnotations.iterator();
-      Iterator<Provider<EventDecorator<Annotation, Event>>> edIt = decoratorProviders.iterator();
-      while (aIt.hasNext() && edIt.hasNext() && toInvoke != null) {
-        Annotation annotation = aIt.next();
+      for (DecoratorInfo info : decoratorMap.getDecoratorInfo(method)) {
+        Annotation annotation = info.getAnnotation();
         decoratorScope.enter(annotation, toInvoke);
         try {
-          EventDecorator<Annotation, Event> eventDecorator = edIt.next().get();
+          EventDecorator<Annotation, Event> eventDecorator = info.getProvider().get();
           /*
            * If the decorator can't receive the event, just drop it. This allows decorators that are
            * specific to a certain event subtype to be applied to a receiver method that accepts a
@@ -220,6 +207,11 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
             DecoratorContext ctx = decoratorContexts.get();
             ctx.setEvent(desiredFacet);
             toInvoke = eventDecorator.wrap(ctx);
+
+            // If the decorator has nullified the work, don't do anything else
+            if (toInvoke == null) {
+              break;
+            }
           }
         } finally {
           decoratorScope.exit();
@@ -272,7 +264,6 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
     this.instanceProvider = provider;
     this.method = method;
     method.setAccessible(true);
-    computeDecorators();
     computeProviders();
   }
 
@@ -284,7 +275,6 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
     instanceProvider = null;
     method = staticMethod;
     method.setAccessible(true);
-    computeDecorators();
     computeProviders();
   }
 
@@ -327,12 +317,6 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
     this.logger = logger;
     this.results = results;
     this.works = works;
-  }
-
-  private void computeDecorators() {
-    decoratorAnnotations.clear();
-    decoratorProviders.clear();
-    decoratorMap.computeDecorators(method, decoratorAnnotations, decoratorProviders);
   }
 
   /**

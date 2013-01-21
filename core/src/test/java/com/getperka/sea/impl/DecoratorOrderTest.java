@@ -1,4 +1,5 @@
 package com.getperka.sea.impl;
+
 /*
  * #%L
  * Simple Event Architecture - Core
@@ -25,11 +26,7 @@ import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-
-import javax.inject.Provider;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -42,9 +39,9 @@ import com.getperka.sea.decoration.Logged;
 import com.getperka.sea.decoration.Success;
 import com.getperka.sea.decoration.Timed;
 import com.getperka.sea.ext.DecoratorOrder;
-import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.EventObserver;
 import com.getperka.sea.ext.EventObserverBinding;
+import com.getperka.sea.impl.DecoratorMap.DecoratorInfo;
 
 public class DecoratorOrderTest {
 
@@ -151,16 +148,12 @@ public class DecoratorOrderTest {
   private void checkDecorators(Class<?> clazz, Class<?>... expectedOrder) {
     map.register(clazz);
 
-    List<Annotation> annotations = new ArrayList<Annotation>();
-    List<Provider<EventDecorator<Annotation, Event>>> providers = new ArrayList<Provider<EventDecorator<Annotation, Event>>>();
+    List<DecoratorInfo> info = map.getDecoratorInfo(method);
 
-    map.computeDecorators(method, annotations, providers);
-    // Reverse annotations, since the wrap() order is backwards
-    Collections.reverse(annotations);
-
-    assertEquals("Annotation count mismatch", expectedOrder.length, annotations.size());
+    assertEquals("Annotation count mismatch", expectedOrder.length, info.size());
     for (int i = 0, j = expectedOrder.length; i < j; i++) {
-      assertEquals(expectedOrder[i], annotations.get(i).annotationType());
+      // Reverse order, since the wrap() order is backwards
+      assertEquals(expectedOrder[i], info.get(j - i - 1).getAnnotation().annotationType());
     }
   }
 

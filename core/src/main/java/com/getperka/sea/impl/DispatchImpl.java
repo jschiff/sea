@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
 
@@ -145,7 +144,6 @@ public class DispatchImpl implements EventDispatch, HasInjector {
     return toReturn;
   }
 
-  @Inject
   void inject(BindingMap bindingMap, DecoratorMap decoratorMap, Injector injector,
       Provider<Invocation> invocations, @EventLogger Logger logger, DispatchMap map,
       ObserverMap observerMap, @EventExecutor ExecutorService service) {

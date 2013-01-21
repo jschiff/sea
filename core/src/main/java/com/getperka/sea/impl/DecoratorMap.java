@@ -28,9 +28,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
@@ -46,6 +47,29 @@ import com.google.inject.Injector;
  */
 @Singleton
 public class DecoratorMap {
+  /**
+   * An immutable pair association a provider for an {@link EventDecorator} and an
+   * {@link Annotation} that can be used to configure it.
+   */
+  public static class DecoratorInfo {
+    private final Annotation annotation;
+    private final Provider<EventDecorator<Annotation, Event>> provider;
+
+    public DecoratorInfo(Annotation annotation,
+        Provider<EventDecorator<Annotation, Event>> provider) {
+      this.annotation = annotation;
+      this.provider = provider;
+    }
+
+    public Annotation getAnnotation() {
+      return annotation;
+    }
+
+    public Provider<EventDecorator<Annotation, Event>> getProvider() {
+      return provider;
+    }
+  }
+
   /**
    * Extract all annotations declared on the element, partially sorted by a {@link DecoratorOrder}.
    */
@@ -66,51 +90,33 @@ public class DecoratorMap {
   }
 
   private BindingMap bindingMap;
-  private final List<Annotation> globalAnnotations = new ArrayList<Annotation>();
-  /**
-   * Prevents concurrent modification of {@link #globalAnnotations} and {@link #globalProviders}.
-   */
-  private final ReadWriteLock globalLock = new ReentrantReadWriteLock();
-  private final List<Provider<EventDecorator<Annotation, Event>>> globalProviders =
-      new ArrayList<Provider<EventDecorator<Annotation, Event>>>();
+  private final Map<Method, List<DecoratorInfo>> cache = new ConcurrentHashMap<Method, List<DecoratorInfo>>();
+  private final List<DecoratorInfo> globalDecorators = new CopyOnWriteArrayList<DecoratorInfo>();
   private Injector injector;
 
   protected DecoratorMap() {}
 
   /**
-   * Given a method, compute the decorators and configuration annotations. The accumulator lists
-   * will have the same number of elements added to them.
+   * Given a method, compute the decorators and configuration annotations.
    * 
    * @param method the method to be decorated
-   * @param annotations an accumulator for the annotations to pass to the decorators
-   * @param providers an accumulator for the the decorators to invoke
+   * @return a list of {@link DecoratorInfo} in the order in which the decorators should be applied
    */
-  public void computeDecorators(Method method, List<Annotation> annotations,
-      List<Provider<EventDecorator<Annotation, Event>>> providers) {
-
-    compute(method, annotations, providers);
-    compute(method.getDeclaringClass(), annotations, providers);
-    compute(method.getDeclaringClass().getPackage(), annotations, providers);
-    globalLock.readLock().lock();
-    try {
-      annotations.addAll(globalAnnotations);
-      providers.addAll(globalProviders);
-    } finally {
-      globalLock.readLock().unlock();
+  public List<DecoratorInfo> getDecoratorInfo(Method method) {
+    List<DecoratorInfo> info = cache.get(method);
+    if (info == null) {
+      info = Collections.unmodifiableList(computeDecorators(method));
+      cache.put(method, info);
     }
+    return info;
   }
 
   /**
    * Register global decorators.
    */
   public void register(AnnotatedElement element) {
-    globalLock.writeLock().lock();
-    try {
-      compute(element, globalAnnotations, globalProviders);
-      assert globalAnnotations.size() == globalProviders.size();
-    } finally {
-      globalLock.writeLock().unlock();
-    }
+    globalDecorators.addAll(compute(element));
+    cache.clear();
   }
 
   @Inject
@@ -119,8 +125,8 @@ public class DecoratorMap {
     this.injector = injector;
   }
 
-  private void compute(AnnotatedElement elt, List<Annotation> annotations,
-      List<Provider<EventDecorator<Annotation, Event>>> providers) {
+  private List<DecoratorInfo> compute(AnnotatedElement elt) {
+    List<DecoratorInfo> toReturn = new ArrayList<DecoratorInfo>();
     /*
      * Get a partially-ordered list of annotations, then reverse it so that the user's
      * highest-priority decorators are applied last (and therefore their wrapped callable is
@@ -144,8 +150,20 @@ public class DecoratorMap {
       Provider<EventDecorator<Annotation, Event>> provider =
           (Provider<EventDecorator<Annotation, Event>>) injector.getProvider(decoratorType);
 
-      annotations.add(annotation);
-      providers.add(provider);
+      toReturn.add(new DecoratorInfo(annotation, provider));
     }
+
+    return toReturn;
+  }
+
+  private List<DecoratorInfo> computeDecorators(Method method) {
+    List<DecoratorInfo> toReturn = new ArrayList<DecoratorInfo>();
+
+    toReturn.addAll(compute(method));
+    toReturn.addAll(compute(method.getDeclaringClass()));
+    toReturn.addAll(compute(method.getDeclaringClass().getPackage()));
+    toReturn.addAll(globalDecorators);
+
+    return toReturn;
   }
 }
