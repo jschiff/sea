@@ -46,12 +46,14 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
   @Override
   public void initialize(Subscriptions subscriptions) {
     for (Subscription subscription : subscriptions.value()) {
-      try {
-        shouldSuppress.put(subscription.event(),
-            RoutingMode.REMOTE.equals(subscription.options().routingMode()));
-        subscriber.subscribe(subscription.event(), subscription.options());
-      } catch (EventSubscriberException e) {
-        throw new RuntimeException("Could not subscribe to event", e);
+      for (Class<? extends Event> eventType : subscription.event()) {
+        try {
+          shouldSuppress.put(eventType,
+              RoutingMode.REMOTE.equals(subscription.options().routingMode()));
+          subscriber.subscribe(eventType, subscription.options());
+        } catch (EventSubscriberException e) {
+          throw new RuntimeException("Could not subscribe to event", e);
+        }
       }
     }
   }

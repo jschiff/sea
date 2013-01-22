@@ -1,4 +1,5 @@
 package com.getperka.sea.jms;
+
 /*
  * #%L
  * Simple Event Architecture - JMS Support
@@ -27,7 +28,7 @@ import java.lang.annotation.Target;
 import com.getperka.sea.Event;
 
 /**
- * Maps an event type to options.
+ * Maps one or more event types to subscription options.
  * 
  * @see Subscriptions
  */
@@ -35,7 +36,7 @@ import com.getperka.sea.Event;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({})
 public @interface Subscription {
-  Class<? extends Event> event();
+  Class<? extends Event>[] event();
 
   SubscriptionOptions options() default @SubscriptionOptions;
 }

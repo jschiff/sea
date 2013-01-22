@@ -1,4 +1,5 @@
 package com.getperka.sea.jms;
+
 /*
  * #%L
  * Simple Event Architecture - JMS Support
@@ -27,9 +28,15 @@ import java.lang.annotation.Target;
 import com.getperka.sea.ext.EventObserverBinding;
 import com.getperka.sea.jms.impl.SubscriptionObserver;
 
+/**
+ * A global decorator annotation that enables event types to be routed across JMS.
+ */
 @EventObserverBinding(SubscriptionObserver.class)
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.PACKAGE, ElementType.METHOD, ElementType.TYPE })
 public @interface Subscriptions {
+  /**
+   * Individual event subscription configurations.
+   */
   Subscription[] value();
 }
