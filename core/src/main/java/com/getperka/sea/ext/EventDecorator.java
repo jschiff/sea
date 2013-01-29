@@ -98,6 +98,11 @@ public interface EventDecorator<A extends Annotation, E extends Event> {
    */
   public interface Context<A extends Annotation, E extends Event> {
     /**
+     * Fire the given event once the entire decorator stack has unwound.
+     */
+    void fireLater(Event event);
+
+    /**
      * The binding annotation that triggered the {@link EventDecorator}.
      */
     A getAnnotation();

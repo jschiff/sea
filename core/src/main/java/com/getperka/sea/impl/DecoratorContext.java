@@ -21,6 +21,7 @@ package com.getperka.sea.impl;
  */
 
 import java.lang.annotation.Annotation;
+import java.util.Queue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -33,6 +34,7 @@ import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.CurrentEvent;
 import com.getperka.sea.inject.DecoratorScoped;
+import com.getperka.sea.inject.DeferredEvents;
 import com.getperka.sea.inject.EventContext;
 import com.getperka.sea.inject.ReceiverInstance;
 import com.getperka.sea.inject.WasDispatched;
@@ -42,6 +44,7 @@ import com.getperka.sea.inject.WasThrown;
 public class DecoratorContext implements EventDecorator.Context<Annotation, Event> {
   private Annotation annotation;
   private Object context;
+  private Queue<Event> deferredEvents;
   private Event event;
   private ReceiverTarget target;
   private AtomicBoolean wasDispatched;
@@ -54,6 +57,11 @@ public class DecoratorContext implements EventDecorator.Context<Annotation, Even
   private Event originalEvent;
 
   protected DecoratorContext() {}
+
+  @Override
+  public void fireLater(Event event) {
+    deferredEvents.add(event);
+  }
 
   @Override
   public Annotation getAnnotation() {
@@ -104,9 +112,11 @@ public class DecoratorContext implements EventDecorator.Context<Annotation, Even
   void inject(Annotation annotation, @EventContext Provider<Object> context,
       @CurrentEvent Event originalEvent, @ReceiverInstance Provider<Object> receiverInstance,
       ReceiverTarget target, @WasDispatched AtomicBoolean wasDispatched,
-      @WasThrown AtomicReference<Throwable> wasThrown, Callable<Object> work) {
+      @WasThrown AtomicReference<Throwable> wasThrown, Callable<Object> work,
+      @DeferredEvents Queue<Event> deferredEvents) {
     this.annotation = annotation;
     this.context = context.get();
+    this.deferredEvents = deferredEvents;
     this.event = originalEvent;
     this.originalEvent = originalEvent;
     this.receiverInstance = receiverInstance;

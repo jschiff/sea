@@ -28,6 +28,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -41,12 +42,14 @@ import org.slf4j.Logger;
 import com.getperka.sea.BadReceiverException;
 import com.getperka.sea.BaseCompositeEvent;
 import com.getperka.sea.Event;
+import com.getperka.sea.EventDispatch;
 import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.impl.DecoratorMap.DecoratorInfo;
 import com.getperka.sea.inject.CurrentEvent;
 import com.getperka.sea.inject.DecoratorScope;
+import com.getperka.sea.inject.DeferredEvents;
 import com.getperka.sea.inject.EventLogger;
 import com.getperka.sea.inject.ReceiverInstance;
 import com.getperka.sea.inject.ReceiverScope;
@@ -133,6 +136,11 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
    * Scope data for constructing {@link EventDecorator} instances.
    */
   private DecoratorScope decoratorScope;
+  /**
+   * Events that should be fired once all decorators have completed.
+   */
+  private Provider<Queue<Event>> deferredEvents;
+  private EventDispatch dispatch;
   /**
    * Scope data for constructing various components.
    */
@@ -221,6 +229,9 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
       if (toInvoke != null) {
         try {
           toInvoke.call();
+          for (Event deferred : deferredEvents.get()) {
+            dispatch.fire(deferred);
+          }
         } catch (Exception e) {
           logger.error("Unhandled exception while dispatching event", e);
         }
@@ -304,6 +315,8 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
       Provider<DecoratorContext> decoratorContexts,
       DecoratorMap decoratorMap,
       DecoratorScope decoratorScope,
+      @DeferredEvents Provider<Queue<Event>> deferredEvents,
+      EventDispatch dispatch,
       ReceiverScope eventScope,
       Injector injector,
       @EventLogger Logger logger,
@@ -312,6 +325,8 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
     this.decoratorContexts = decoratorContexts;
     this.decoratorMap = decoratorMap;
     this.decoratorScope = decoratorScope;
+    this.deferredEvents = deferredEvents;
+    this.dispatch = dispatch;
     this.eventScope = eventScope;
     this.injector = injector;
     this.logger = logger;

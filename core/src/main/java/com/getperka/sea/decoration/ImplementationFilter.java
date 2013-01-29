@@ -22,18 +22,10 @@ package com.getperka.sea.decoration;
 
 import java.util.concurrent.Callable;
 
-import javax.inject.Inject;
-
-import com.getperka.sea.EventDispatch;
 import com.getperka.sea.ext.EventDecorator;
 
 class ImplementationFilter implements EventDecorator<Implementation, OutcomeEvent> {
-  private final EventDispatch dispatch;
-
-  @Inject
-  ImplementationFilter(EventDispatch dispatch) {
-    this.dispatch = dispatch;
-  }
+  ImplementationFilter() {}
 
   @Override
   public Callable<Object> wrap(final Context<Implementation, OutcomeEvent> ctx) {
@@ -61,7 +53,7 @@ class ImplementationFilter implements EventDecorator<Implementation, OutcomeEven
         } finally {
           // Optionally re-dispatch the event to trigger @Success / @Failure receivers
           if (ctx.wasDispatched() && ctx.getAnnotation().fireResult()) {
-            dispatch.fire(ctx.getOriginalEvent());
+            ctx.fireLater(ctx.getOriginalEvent());
           }
         }
       }

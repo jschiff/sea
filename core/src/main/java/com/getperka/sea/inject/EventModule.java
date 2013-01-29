@@ -21,6 +21,7 @@ package com.getperka.sea.inject;
  */
 
 import java.lang.annotation.Annotation;
+import java.util.Queue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -106,6 +107,10 @@ public class EventModule extends AbstractModule {
     bind(Event.class)
         .annotatedWith(CurrentEvent.class)
         .toProvider(scope.<Event> provider())
+        .in(scope);
+    bind(new TypeLiteral<Queue<Event>>() {})
+        .annotatedWith(DeferredEvents.class)
+        .toProvider(scope.<Queue<Event>> provider())
         .in(scope);
     bind(Object.class)
         .annotatedWith(EventContext.class)

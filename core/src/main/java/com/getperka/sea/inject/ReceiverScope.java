@@ -23,7 +23,9 @@ package com.getperka.sea.inject;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -45,6 +47,7 @@ public class ReceiverScope extends BaseScope {
 
     Frame(Event event, ReceiverTarget receiverTarget, Object context) {
       values.put(currentEventKey, event);
+      values.put(deferredEventsKey, new ConcurrentLinkedQueue<Event>());
       values.put(eventContextKey, context == null ? NULL : context);
       values.put(receiverTargetKey, receiverTarget);
       values.put(wasDispatchedKey, new AtomicBoolean());
@@ -54,6 +57,8 @@ public class ReceiverScope extends BaseScope {
   }
 
   private static final Key<Event> currentEventKey = Key.get(Event.class, CurrentEvent.class);
+  private static final Key<Queue<Event>> deferredEventsKey =
+      Key.get(new TypeLiteral<Queue<Event>>() {}, DeferredEvents.class);
   private static final Key<Object> eventContextKey = Key.get(Object.class, EventContext.class);
   private static final Key<Object> receiverInstanceKey = Key.get(Object.class,
       ReceiverInstance.class);
