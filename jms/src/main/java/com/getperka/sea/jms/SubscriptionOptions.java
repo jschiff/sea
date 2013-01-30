@@ -31,6 +31,7 @@ import javax.jms.Queue;
 import javax.jms.Topic;
 
 import com.getperka.sea.EventDispatch;
+import com.getperka.sea.jms.ext.SubscriptionOptionsBuilder;
 
 /**
  * Controls options related to Event routing.
@@ -43,6 +44,11 @@ import com.getperka.sea.EventDispatch;
 @Target({})
 public @interface SubscriptionOptions {
   // NB: When adding additional methods, update the builder
+
+  /**
+   * A SubscriptionOptions instance with default values.
+   */
+  SubscriptionOptions DEFAULT = new SubscriptionOptionsBuilder().build();
 
   /**
    * Allows the name of the queue or topic to be overridden. If left unspecified, the canonical name

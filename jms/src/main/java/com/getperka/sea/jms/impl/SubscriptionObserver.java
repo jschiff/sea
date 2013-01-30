@@ -20,6 +20,7 @@ package com.getperka.sea.jms.impl;
  * #L%
  */
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -31,12 +32,18 @@ import com.getperka.sea.Event;
 import com.getperka.sea.ext.EventObserver;
 import com.getperka.sea.jms.EventSubscriberException;
 import com.getperka.sea.jms.RoutingMode;
-import com.getperka.sea.jms.Subscription;
+import com.getperka.sea.jms.SubscriptionOptions;
 import com.getperka.sea.jms.Subscriptions;
+import com.getperka.sea.jms.ext.SubscriptionSource;
+import com.google.inject.Injector;
 
+/**
+ * Intercepts events from the local EventDispatch and forwards them to the JMS subscription logic.
+ */
 @Singleton
 public class SubscriptionObserver implements EventObserver<Subscriptions, Event> {
 
+  private Injector injector;
   private ConcurrentMap<Class<? extends Event>, Boolean> shouldSuppress =
       new ConcurrentHashMap<Class<? extends Event>, Boolean>();
   private EventSubscriber subscriber;
@@ -45,15 +52,34 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
 
   @Override
   public void initialize(Subscriptions subscriptions) {
-    for (Subscription subscription : subscriptions.value()) {
-      for (Class<? extends Event> eventType : subscription.event()) {
-        try {
-          shouldSuppress.put(eventType,
-              RoutingMode.REMOTE.equals(subscription.options().routingMode()));
-          subscriber.subscribe(eventType, subscription.options());
-        } catch (EventSubscriberException e) {
-          throw new RuntimeException("Could not subscribe to event", e);
-        }
+    final Map<Class<? extends Event>, SubscriptionOptions> events =
+        new HashMap<Class<? extends Event>, SubscriptionOptions>();
+
+    // A simple context implementation that drops subscriptions into the map
+    SubscriptionSource.Context ctx = new SubscriptionSource.Context() {
+      @Override
+      public void subscribe(Class<? extends Event> eventType, SubscriptionOptions options) {
+        events.put(eventType, options);
+      }
+    };
+
+    // Set up declarative subscriptions
+    new DeclarativeSubscriptionSource(subscriptions).configureSubscriptions(ctx);
+
+    // Invoke each SubscriptionSource
+    for (Class<? extends SubscriptionSource> clazz : subscriptions.sources()) {
+      injector.getInstance(clazz).configureSubscriptions(ctx);
+    }
+
+    // Perform actual registration
+    for (Map.Entry<Class<? extends Event>, SubscriptionOptions> entry : events.entrySet()) {
+      Class<? extends Event> eventType = entry.getKey();
+      SubscriptionOptions options = entry.getValue();
+      try {
+        shouldSuppress.put(eventType, RoutingMode.REMOTE.equals(options.routingMode()));
+        subscriber.subscribe(eventType, options);
+      } catch (EventSubscriberException e) {
+        throw new RuntimeException("Could not subscribe to event", e);
       }
     }
   }
@@ -76,7 +102,8 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
   }
 
   @Inject
-  void inject(EventSubscriber subscriber) {
+  void inject(Injector injector, EventSubscriber subscriber) {
+    this.injector = injector;
     this.subscriber = subscriber;
   }
 

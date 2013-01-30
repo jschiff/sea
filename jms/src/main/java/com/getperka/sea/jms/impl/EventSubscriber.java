@@ -64,15 +64,22 @@ public class EventSubscriber {
 
   protected EventSubscriber() {}
 
+  public boolean isSubscribed(Class<? extends Event> eventType) {
+    return subscribed.containsKey(eventType);
+  }
+
   /**
    * Terminate all subscriptions.
    */
   public void shutdown() {
-    shutdown.set(true);
+    if (shutdown.getAndSet(true)) {
+      return;
+    }
 
     for (EventSubscription subscription : subscribed.values()) {
       subscription.cancel();
     }
+    subscribed.clear();
 
     try {
       session.close();
@@ -144,7 +151,12 @@ public class EventSubscriber {
           consumer.setMessageListener(subscription);
         }
       }
-      subscribed.put(eventType, subscription);
+
+      // Implement last-one-wins policy
+      EventSubscription existing = subscribed.put(eventType, subscription);
+      if (existing != null) {
+        existing.cancel();
+      }
       return subscription;
     } catch (JMSException e) {
       throw new EventSubscriberException("Could not subscribe to event type", e);
@@ -166,9 +178,5 @@ public class EventSubscriber {
     this.session = session;
     this.subscriptions = subscriptions;
     this.transport = transport;
-  }
-
-  boolean isSubscribed(Class<? extends Event> eventType) {
-    return subscribed.containsKey(eventType);
   }
 }

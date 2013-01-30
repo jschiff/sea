@@ -26,6 +26,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.getperka.sea.ext.EventObserverBinding;
+import com.getperka.sea.jms.ext.SubscriptionSource;
 import com.getperka.sea.jms.impl.SubscriptionObserver;
 
 /**
@@ -36,7 +37,13 @@ import com.getperka.sea.jms.impl.SubscriptionObserver;
 @Target({ ElementType.PACKAGE, ElementType.METHOD, ElementType.TYPE })
 public @interface Subscriptions {
   /**
+   * Subscriptions may be configured dynamically by providing SubscriptionSource types. The
+   * implementing types must have zero-arg constructors or injection bindings.
+   */
+  Class<? extends SubscriptionSource>[] sources() default {};
+
+  /**
    * Individual event subscription configurations.
    */
-  Subscription[] value();
+  Subscription[] value() default {};
 }
