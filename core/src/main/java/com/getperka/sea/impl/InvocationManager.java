@@ -83,6 +83,7 @@ public class InvocationManager {
           event.getClass().getName());
 
       DispatchCompleteEvent complete = new DispatchCompleteEvent();
+      complete.setContext(context);
       complete.setSource(event);
       dispatch.fire(complete);
       return toReturn;

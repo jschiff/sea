@@ -128,6 +128,7 @@ public class Invocation implements Callable<DispatchResult> {
   private void maybeDispatchCompleteEvent(DispatchResult toReturn) {
     if (state.isLastInvocation(toReturn) && !(event instanceof DispatchCompleteEvent)) {
       DispatchCompleteEvent complete = new DispatchCompleteEvent();
+      complete.setContext(context);
       complete.setSource(event);
       complete.setResults(new ArrayList<DispatchResult>(state.getResults()));
       dispatch.fire(complete);

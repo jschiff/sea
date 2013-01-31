@@ -36,8 +36,16 @@ import com.getperka.sea.Event;
  * looking for DispatchCompletedEvents with a zero-length {@link #getResults()}.
  */
 public class DispatchCompleteEvent implements Event {
+  private Object context;
   private List<DispatchResult> results = Collections.emptyList();
   private Event source;
+
+  /**
+   * Returns the context object that accompanied the event dispatch.
+   */
+  public Object getContext() {
+    return context;
+  }
 
   /**
    * Returns the DispatchEvents produced from all receivers that received the event.
@@ -48,6 +56,10 @@ public class DispatchCompleteEvent implements Event {
 
   public Event getSource() {
     return source;
+  }
+
+  public void setContext(Object context) {
+    this.context = context;
   }
 
   public void setResults(List<DispatchResult> results) {
