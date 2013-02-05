@@ -52,7 +52,7 @@ public final class OutcomeEventLatch {
       @Failure
       @Receiver
       void failure(OutcomeEvent evt) {
-        if (waitFor.get().equals(evt)) {
+        if (evt.equals(waitFor.get())) {
           countDown(evt);
         }
       }
@@ -60,7 +60,7 @@ public final class OutcomeEventLatch {
       @Receiver
       @Success
       void success(OutcomeEvent evt) {
-        if (waitFor.get().equals(evt)) {
+        if (evt.equals(waitFor.get())) {
           countDown(evt);
         }
       }
