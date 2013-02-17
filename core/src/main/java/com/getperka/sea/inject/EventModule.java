@@ -29,6 +29,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +44,8 @@ import com.getperka.sea.impl.SettableReceiverTarget;
 import com.getperka.sea.impl.SettableRegistration;
 import com.getperka.sea.impl.SettableRegistrationImpl;
 import com.google.inject.AbstractModule;
+import com.google.inject.Provides;
+import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 
 public class EventModule extends AbstractModule {
@@ -65,15 +68,6 @@ public class EventModule extends AbstractModule {
 
     bind(EventDispatch.class).to(DispatchImpl.class);
 
-    // Choose a reasonable default for the thread pool
-    bind(ExecutorService.class)
-        .annotatedWith(EventExecutor.class)
-        .toInstance(executorService());
-
-    bind(Logger.class)
-        .annotatedWith(EventLogger.class)
-        .toInstance(LoggerFactory.getLogger(EventDispatch.class));
-
     bind(SettableReceiverTarget.class).to(ReceiverTargetImpl.class);
     bind(SettableRegistration.class).to(SettableRegistrationImpl.class);
   }
@@ -81,8 +75,25 @@ public class EventModule extends AbstractModule {
   /**
    * Create or return an {@link ExecutorService} for executing events on.
    */
+  @Provides
+  @EventExecutor
+  @Singleton
   protected ExecutorService executorService() {
     return Executors.newCachedThreadPool(new MyFactory());
+  }
+
+  @Provides
+  @EventLogger
+  @Singleton
+  protected Logger logger(@EventLogger ILoggerFactory factory) {
+    return factory.getLogger(EventDispatch.class.getName());
+  }
+
+  @Provides
+  @EventLogger
+  @Singleton
+  protected ILoggerFactory loggerFactory() {
+    return LoggerFactory.getILoggerFactory();
   }
 
   private void bindDecoratorScope() {
