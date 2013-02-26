@@ -51,6 +51,6 @@ public class JmsEventModule extends AbstractModule {
   @Provides
   @Singleton
   Session session(@EventConnection Connection conn) throws JMSException {
-    return conn.createSession(false, Session.CLIENT_ACKNOWLEDGE);
+    return conn.createSession(false, Session.AUTO_ACKNOWLEDGE);
   }
 }

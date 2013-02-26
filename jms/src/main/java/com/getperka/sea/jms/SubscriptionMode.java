@@ -1,4 +1,5 @@
 package com.getperka.sea.jms;
+
 /*
  * #%L
  * Simple Event Architecture - JMS Support
@@ -34,17 +35,7 @@ public enum SubscriptionMode {
   /**
    * Receive and acknowledge events.
    */
-  RECEIVE(true, false),
-  /**
-   * Receive, but not not acknowledge, events. The actual effect of this mode will depend on how
-   * your JMS implementation handles messages that are left unacknowledged.
-   */
-  SPY(true, false) {
-    @Override
-    public boolean shouldAcknowledge() {
-      return false;
-    }
-  };
+  RECEIVE(true, false);
 
   private final boolean receive;
   private final boolean send;
@@ -52,10 +43,6 @@ public enum SubscriptionMode {
   private SubscriptionMode(boolean receive, boolean send) {
     this.receive = receive;
     this.send = send;
-  }
-
-  public boolean shouldAcknowledge() {
-    return true;
   }
 
   public boolean shouldReceive() {

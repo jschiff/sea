@@ -53,7 +53,6 @@ import com.getperka.sea.jms.inject.EventSession;
 @Singleton
 public class EventSubscriber {
 
-  private Provider<MessageAcknowledger> acknowledgers;
   private Logger logger;
   private Session session;
   private final AtomicBoolean shutdown = new AtomicBoolean();
@@ -145,11 +144,7 @@ public class EventSubscriber {
             throw new UnsupportedOperationException(options.destinationType().name());
         }
 
-        if (mode.shouldAcknowledge()) {
-          consumer.setMessageListener(acknowledgers.get().withDelegate(subscription));
-        } else {
-          consumer.setMessageListener(subscription);
-        }
+        consumer.setMessageListener(subscription);
       }
 
       // Implement last-one-wins policy
@@ -170,10 +165,9 @@ public class EventSubscriber {
   }
 
   @Inject
-  void inject(Provider<MessageAcknowledger> acknowledgers, @EventLogger Logger logger,
+  void inject(@EventLogger Logger logger,
       @EventSession Session session, Provider<EventSubscription> subscriptions,
       EventTransport transport) {
-    this.acknowledgers = acknowledgers;
     this.logger = logger;
     this.session = session;
     this.subscriptions = subscriptions;
