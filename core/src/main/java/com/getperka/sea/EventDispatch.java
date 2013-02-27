@@ -26,6 +26,7 @@ import java.lang.reflect.Method;
 import javax.inject.Provider;
 
 import com.getperka.sea.ext.DecoratorOrder;
+import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.EventObserver;
 
@@ -72,10 +73,11 @@ public interface EventDispatch {
    * detection.
    * 
    * @param event the Event to dispatch. {@code null} values will be ignored
-   * @param context an arbitrary object to associate with the specific call to {@code fire}
+   * @param context an arbitrary object to make available through
+   *          {@link EventContext#getUserObject()}
    * @see EventDecorator.Context#getContext()
    */
-  void fire(Event event, Object context);
+  void fire(Event event, Object userObject);
 
   /**
    * Register a receiver class. Instances of the class will be created on demand for each event the

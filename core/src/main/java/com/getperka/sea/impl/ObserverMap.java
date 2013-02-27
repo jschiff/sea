@@ -36,6 +36,7 @@ import javax.inject.Singleton;
 import com.getperka.sea.BaseCompositeEvent;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
+import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.EventObserver;
 import com.google.inject.Injector;
 import com.google.inject.TypeLiteral;
@@ -94,7 +95,7 @@ public class ObserverMap {
     registrations.addAll(0, newRegistrations);
   }
 
-  public boolean shouldFire(final Event event, final Object context) {
+  public boolean shouldFire(final Event event, final EventContext context) {
     final boolean[] shouldFire = { true };
     for (ObserverRegistration registration : registrations) {
       final Annotation annotation = registration.annotation;
@@ -120,7 +121,7 @@ public class ObserverMap {
 
         EventObserver.Context<Event> ctx = new EventObserver.Context<Event>() {
           @Override
-          public Object getContext() {
+          public EventContext getContext() {
             return context;
           }
 

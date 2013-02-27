@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.ext.DispatchCompleteEvent;
+import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.EventLogger;
 import com.getperka.sea.inject.ReceiverScope;
@@ -59,7 +60,7 @@ public class InvocationManager {
 
   protected InvocationManager() {}
 
-  public List<Invocation> getInvocations(Event event, Object context) {
+  public List<Invocation> getInvocations(Event event, EventContext context) {
 
     // Get the list of receiver methods to invoke
     List<ReceiverTarget> targets = map.getTargets(event.getClass());

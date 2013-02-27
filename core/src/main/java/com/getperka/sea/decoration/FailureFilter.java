@@ -22,11 +22,24 @@ package com.getperka.sea.decoration;
 
 import java.util.concurrent.Callable;
 
+import javax.inject.Inject;
+
 import com.getperka.sea.ext.EventDecorator;
 
 class FailureFilter implements EventDecorator<Failure, OutcomeEvent> {
+  private OutcomeEventCoordinator coordinator;
+
+  FailureFilter() {}
+
   @Override
   public Callable<Object> wrap(Context<Failure, OutcomeEvent> ctx) {
-    return ctx.getEvent().getFailure() == null ? null : ctx.getWork();
+    OutcomeEvent event = ctx.getEvent();
+    return coordinator.mayFollowUp(event, ctx.getContext()) && event.getFailure() != null ?
+        ctx.getWork() : null;
+  }
+
+  @Inject
+  void inject(OutcomeEventCoordinator coordinator) {
+    this.coordinator = coordinator;
   }
 }

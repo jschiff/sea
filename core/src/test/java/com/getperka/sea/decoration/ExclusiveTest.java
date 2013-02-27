@@ -76,12 +76,12 @@ public class ExclusiveTest {
 
   private static class MyEvent implements Event {}
 
+  private EventDispatch dispatch = EventDispatchers.create();
   private ExclusiveFilter filter;
   private final Queue<String> queue = new ConcurrentLinkedQueue<String>();
 
   @Test(timeout = TestConstants.testDelay)
   public void test() {
-    EventDispatch dispatch = EventDispatchers.create();
     filter = ((HasInjector) dispatch).getInjector().getInstance(ExclusiveFilter.class);
 
     SleepyReceiver a = new SleepyReceiver("a");

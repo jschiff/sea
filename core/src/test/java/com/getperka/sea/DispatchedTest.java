@@ -44,8 +44,6 @@ import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.EventDecoratorBinding;
 
 public class DispatchedTest {
-  private static final String EXPECTED_CONTEXT = "Hello Context!";
-
   @EventDecoratorBinding(FilterImpl.class)
   @Retention(RetentionPolicy.RUNTIME)
   @interface Filter {}
@@ -70,7 +68,7 @@ public class DispatchedTest {
       alwaysCalled = true;
       if (expected != null) {
         assertSame(expected, evt.getSource());
-        assertEquals(EXPECTED_CONTEXT, evt.getContext());
+        assertEquals(EXPECTED_CONTEXT, evt.getContext().getUserObject());
 
         for (DispatchResult res : evt.getResults()) {
           assertSame(expected, res.getEvent());
@@ -117,6 +115,8 @@ public class DispatchedTest {
   private static class MyEvent implements Event {
     boolean drop;
   }
+
+  private static final String EXPECTED_CONTEXT = "Hello Context!";
 
   private EventDispatch dispatch = EventDispatchers.create();
   private CountDownLatch latch;

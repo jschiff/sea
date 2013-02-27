@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.ext.DispatchResult;
+import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.impl.DispatchImpl;
 import com.getperka.sea.impl.DispatchResultImpl;
@@ -123,9 +124,8 @@ public class EventModule extends AbstractModule {
         .annotatedWith(DeferredEvents.class)
         .toProvider(scope.<Queue<Event>> provider())
         .in(scope);
-    bind(Object.class)
-        .annotatedWith(EventContext.class)
-        .toProvider(scope.<Object> provider())
+    bind(EventContext.class)
+        .toProvider(scope.<EventContext> provider())
         .in(scope);
     bind(AtomicBoolean.class)
         .annotatedWith(WasDispatched.class)

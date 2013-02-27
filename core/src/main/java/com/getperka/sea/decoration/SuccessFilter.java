@@ -1,4 +1,5 @@
 package com.getperka.sea.decoration;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -21,11 +22,25 @@ package com.getperka.sea.decoration;
 
 import java.util.concurrent.Callable;
 
+import javax.inject.Inject;
+
 import com.getperka.sea.ext.EventDecorator;
 
 class SuccessFilter implements EventDecorator<Success, OutcomeEvent> {
+
+  private OutcomeEventCoordinator coordinator;
+
+  SuccessFilter() {}
+
   @Override
   public Callable<Object> wrap(Context<Success, OutcomeEvent> ctx) {
-    return ctx.getEvent().isSuccess() ? ctx.getWork() : null;
+    OutcomeEvent event = ctx.getEvent();
+    return coordinator.mayFollowUp(event, ctx.getContext()) && event.isSuccess() ?
+        ctx.getWork() : null;
+  }
+
+  @Inject
+  void inject(OutcomeEventCoordinator coordinator) {
+    this.coordinator = coordinator;
   }
 }

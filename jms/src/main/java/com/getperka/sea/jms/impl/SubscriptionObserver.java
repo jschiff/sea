@@ -87,13 +87,13 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
   @Override
   public void observeEvent(Context<Event> context) {
     // Allow events being sent by a subscription to be dispatched normally
-    if (context.getContext() instanceof EventSubscription) {
+    if (context.getContext().getUserObject() instanceof EventSubscription) {
       return;
     }
     if (shouldSuppress(context.getEvent().getClass())) {
       context.suppressEvent();
     }
-    subscriber.fire(context.getOriginalEvent(), context.getContext());
+    subscriber.fire(context.getOriginalEvent(), context.getContext().getUserObject());
   }
 
   @Override

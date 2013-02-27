@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.getperka.sea.Event;
+import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.google.inject.Key;
 import com.google.inject.OutOfScopeException;
@@ -45,10 +46,10 @@ public class ReceiverScope extends BaseScope {
   private static class Frame {
     final Map<Key<?>, Object> values = new ConcurrentHashMap<Key<?>, Object>();
 
-    Frame(Event event, ReceiverTarget receiverTarget, Object context) {
+    Frame(Event event, ReceiverTarget receiverTarget, EventContext context) {
       values.put(currentEventKey, event);
       values.put(deferredEventsKey, new ConcurrentLinkedQueue<Event>());
-      values.put(eventContextKey, context == null ? NULL : context);
+      values.put(eventContextKey, context);
       values.put(receiverTargetKey, receiverTarget);
       values.put(wasDispatchedKey, new AtomicBoolean());
       values.put(wasReturnedKey, new AtomicReference<Object>());
@@ -59,7 +60,7 @@ public class ReceiverScope extends BaseScope {
   private static final Key<Event> currentEventKey = Key.get(Event.class, CurrentEvent.class);
   private static final Key<Queue<Event>> deferredEventsKey =
       Key.get(new TypeLiteral<Queue<Event>>() {}, DeferredEvents.class);
-  private static final Key<Object> eventContextKey = Key.get(Object.class, EventContext.class);
+  private static final Key<EventContext> eventContextKey = Key.get(EventContext.class);
   private static final Key<Object> receiverInstanceKey = Key.get(Object.class,
       ReceiverInstance.class);
   private static final Key<ReceiverTarget> receiverTargetKey = Key.get(ReceiverTarget.class);
@@ -79,7 +80,7 @@ public class ReceiverScope extends BaseScope {
   };
 
   public void enter(Event event, ReceiverTarget receiverTarget,
-      javax.inject.Provider<?> receiverInstance, Object context) {
+      javax.inject.Provider<?> receiverInstance, EventContext context) {
     Frame frame = new Frame(event, receiverTarget, context);
     frameStack.get().push(frame);
     /*

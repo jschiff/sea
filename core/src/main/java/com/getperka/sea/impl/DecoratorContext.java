@@ -30,12 +30,12 @@ import javax.inject.Inject;
 import javax.inject.Provider;
 
 import com.getperka.sea.Event;
+import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.CurrentEvent;
 import com.getperka.sea.inject.DecoratorScoped;
 import com.getperka.sea.inject.DeferredEvents;
-import com.getperka.sea.inject.EventContext;
 import com.getperka.sea.inject.ReceiverInstance;
 import com.getperka.sea.inject.WasDispatched;
 import com.getperka.sea.inject.WasThrown;
@@ -43,7 +43,7 @@ import com.getperka.sea.inject.WasThrown;
 @DecoratorScoped
 public class DecoratorContext implements EventDecorator.Context<Annotation, Event> {
   private Annotation annotation;
-  private Object context;
+  private EventContext context;
   private Queue<Event> deferredEvents;
   private Event event;
   private ReceiverTarget target;
@@ -69,7 +69,7 @@ public class DecoratorContext implements EventDecorator.Context<Annotation, Even
   }
 
   @Override
-  public Object getContext() {
+  public EventContext getContext() {
     return context;
   }
 
@@ -109,13 +109,13 @@ public class DecoratorContext implements EventDecorator.Context<Annotation, Even
   }
 
   @Inject
-  void inject(Annotation annotation, @EventContext Provider<Object> context,
+  void inject(Annotation annotation, EventContext context,
       @CurrentEvent Event originalEvent, @ReceiverInstance Provider<Object> receiverInstance,
       ReceiverTarget target, @WasDispatched AtomicBoolean wasDispatched,
       @WasThrown AtomicReference<Throwable> wasThrown, Callable<Object> work,
       @DeferredEvents Queue<Event> deferredEvents) {
     this.annotation = annotation;
-    this.context = context.get();
+    this.context = context;
     this.deferredEvents = deferredEvents;
     this.event = originalEvent;
     this.originalEvent = originalEvent;

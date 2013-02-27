@@ -64,7 +64,7 @@ public class EventSmokeTest {
     @Override
     public Callable<Object> wrap(final Context<NeedsDecoration, MyEvent> ctx) {
       assertNotNull(ctx.getAnnotation());
-      assertEquals(CONTEXT_VALUE, ctx.getContext());
+      assertEquals(CONTEXT_VALUE, ctx.getContext().getUserObject());
       assertNotNull(ctx.getEvent());
       assertNotNull(ctx.getWork());
       return new Callable<Object>() {

@@ -44,6 +44,7 @@ import com.getperka.sea.BaseCompositeEvent;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.ext.DispatchResult;
+import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.impl.DecoratorMap.DecoratorInfo;
@@ -175,7 +176,10 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
   protected ReceiverTargetImpl() {}
 
   @Override
-  public DispatchResult dispatch(Event event, Object context) {
+  public DispatchResult dispatch(Event event, EventContext context) {
+    if (event == null || context == null) {
+      throw new IllegalArgumentException();
+    }
     eventScope.enter(event, this, instanceProvider, context);
     try {
       // If this is an instance target without an instance, don't do any work

@@ -24,6 +24,7 @@ import java.lang.reflect.AnnotatedElement;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
@@ -32,6 +33,7 @@ import javax.inject.Singleton;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.Registration;
+import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.inject.EventExecutor;
 import com.google.inject.Injector;
 
@@ -39,6 +41,7 @@ import com.google.inject.Injector;
 public class DispatchImpl implements EventDispatch, HasInjector {
 
   private BindingMap bindingMap;
+  private final AtomicLong count = new AtomicLong();
   private DecoratorMap decoratorMap;
   private Injector injector;
   private InvocationManager invocationManager;
@@ -62,10 +65,23 @@ public class DispatchImpl implements EventDispatch, HasInjector {
   }
 
   @Override
-  public void fire(Event event, Object context) {
+  public void fire(Event event, final Object userObject) {
     if (shutdown.get() || event == null) {
       return;
     }
+    EventContext context = new EventContext() {
+      final long sequenceNumber = count.incrementAndGet();
+
+      @Override
+      public long getSequenceNumber() {
+        return sequenceNumber;
+      }
+
+      @Override
+      public Object getUserObject() {
+        return userObject;
+      }
+    };
     if (!observers.shouldFire(event, context)) {
       return;
     }

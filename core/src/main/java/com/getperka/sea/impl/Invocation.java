@@ -34,6 +34,7 @@ import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.ext.DispatchCompleteEvent;
 import com.getperka.sea.ext.DispatchResult;
+import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.EventLogger;
 
@@ -67,7 +68,7 @@ public class Invocation implements Callable<DispatchResult> {
     }
   }
 
-  private Object context;
+  private EventContext context;
   private EventDispatch dispatch;
   private Event event;
   private Logger logger;
@@ -94,7 +95,7 @@ public class Invocation implements Callable<DispatchResult> {
     return toReturn;
   }
 
-  public void setContext(Object context) {
+  public void setContext(EventContext context) {
     this.context = context;
   }
 

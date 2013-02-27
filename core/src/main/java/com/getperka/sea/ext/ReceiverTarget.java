@@ -40,7 +40,7 @@ public interface ReceiverTarget {
    * @return the value returned by the {@link Receiver} method, or replaced by an interveining
    *         {@link EventDecorator}
    */
-  DispatchResult dispatch(Event event, Object context);
+  DispatchResult dispatch(Event event, EventContext context);
 
   /**
    * For debugging use only. Returns the signature of the method that the ReceiverTarget will

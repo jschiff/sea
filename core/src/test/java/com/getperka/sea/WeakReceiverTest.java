@@ -1,4 +1,5 @@
 package com.getperka.sea;
+
 /*
  * #%L
  * Simple Event Architecture - Core
@@ -33,6 +34,7 @@ import org.junit.Test;
 
 import com.getperka.sea.ext.DispatchCompleteEvent;
 import com.getperka.sea.ext.DispatchResult;
+import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.util.EventLatch;
 
@@ -80,7 +82,17 @@ public class WeakReceiverTest {
     assertFalse(evt.actedUpon);
 
     // Check that the target doesn't explode if re-dispatched with a dead reference
-    DispatchResult res = receiverTarget.get().dispatch(new MyEvent(), null);
+    DispatchResult res = receiverTarget.get().dispatch(new MyEvent(), new EventContext() {
+      @Override
+      public long getSequenceNumber() {
+        return 0;
+      }
+
+      @Override
+      public Object getUserObject() {
+        return null;
+      }
+    });
     assertFalse(res.wasReceived());
   }
 }

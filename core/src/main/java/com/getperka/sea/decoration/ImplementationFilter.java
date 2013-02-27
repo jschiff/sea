@@ -22,9 +22,17 @@ package com.getperka.sea.decoration;
 
 import java.util.concurrent.Callable;
 
+import javax.inject.Inject;
+
+import org.slf4j.Logger;
+
 import com.getperka.sea.ext.EventDecorator;
+import com.getperka.sea.inject.EventLogger;
 
 class ImplementationFilter implements EventDecorator<Implementation, OutcomeEvent> {
+  private OutcomeEventCoordinator coordinator;
+  private Logger logger;
+
   ImplementationFilter() {}
 
   @Override
@@ -41,6 +49,7 @@ class ImplementationFilter implements EventDecorator<Implementation, OutcomeEven
       @Override
       public Object call() throws Exception {
         OutcomeEvent event = ctx.getEvent();
+        boolean shouldWarn = !coordinator.recordImplementation(event, ctx.getContext());
         try {
           Object toReturn = ctx.getWork().call();
           // Only record data if the underlying ReceiverTarget was invoked.
@@ -51,12 +60,25 @@ class ImplementationFilter implements EventDecorator<Implementation, OutcomeEven
           }
           return toReturn;
         } finally {
-          // Optionally re-dispatch the event to trigger @Success / @Failure receivers
-          if (ctx.wasDispatched() && ctx.getAnnotation().fireResult()) {
-            ctx.fireLater(ctx.getOriginalEvent());
+          if (ctx.wasDispatched()) {
+            // Warn after the receiver was definitively invoked, since there may be extra filters
+            if (shouldWarn) {
+              logger.warn("Multiple @Implementations appear to exist for a {}", event.getClass()
+                  .getName());
+            }
+            // Optionally re-dispatch the event to trigger @Success / @Failure receivers
+            if (ctx.getAnnotation().fireResult()) {
+              ctx.fireLater(ctx.getOriginalEvent());
+            }
           }
         }
       }
     };
+  }
+
+  @Inject
+  void inject(OutcomeEventCoordinator coordinator, @EventLogger Logger logger) {
+    this.coordinator = coordinator;
+    this.logger = logger;
   }
 }

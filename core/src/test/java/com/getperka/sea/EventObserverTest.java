@@ -63,7 +63,7 @@ public class EventObserverTest {
 
     @Override
     public void observeEvent(Context<MyEvent> context) {
-      assertEquals(Boolean.TRUE, context.getContext());
+      assertEquals(Boolean.TRUE, context.getContext().getUserObject());
       assertSame(context.getEvent(), context.getOriginalEvent());
       if (context.getEvent().drop) {
         context.suppressEvent();
