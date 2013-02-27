@@ -111,9 +111,9 @@ public class EventSmokeTest {
     boolean value() default true;
   }
 
-  static class NullifyingDecorator implements EventDecorator<Nullify, Event> {
+  static class NullifyingDecorator implements EventDecorator<Nullify, MyEvent> {
     @Override
-    public Callable<Object> wrap(Context<Nullify, Event> ctx) {
+    public Callable<Object> wrap(Context<Nullify, MyEvent> ctx) {
       decoratorCalled = true;
       received.add(ctx.getEvent());
       latch.countDown();
