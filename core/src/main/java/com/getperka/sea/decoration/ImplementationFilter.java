@@ -49,29 +49,30 @@ class ImplementationFilter implements EventDecorator<Implementation, OutcomeEven
       @Override
       public Object call() throws Exception {
         OutcomeEvent event = ctx.getEvent();
-        boolean shouldWarn = !coordinator.recordImplementation(event, ctx.getContext());
-        try {
-          Object toReturn = ctx.getWork().call();
-          // Only record data if the underlying ReceiverTarget was invoked.
-          if (ctx.wasDispatched()) {
-            Throwable thrown = ctx.wasThrown();
-            event.setFailure(thrown);
-            event.setSuccess(thrown == null);
+        Object toReturn = ctx.getWork().call();
+        // Only record data if the underlying ReceiverTarget was invoked.
+        if (ctx.wasDispatched()) {
+          /*
+           * Record the implementation before setting the success property, that way if the
+           * @Success filter hasn't yet run on the current sequence number, it won't accidentally
+           * fire twice if the successful event is re-fired.
+           */
+          boolean shouldWarn = !coordinator.recordImplementation(event, ctx.getContext());
+          if (shouldWarn) {
+            logger.warn("Multiple @Implementations appear to exist for a {}", event.getClass()
+                .getName());
           }
-          return toReturn;
-        } finally {
-          if (ctx.wasDispatched()) {
-            // Warn after the receiver was definitively invoked, since there may be extra filters
-            if (shouldWarn) {
-              logger.warn("Multiple @Implementations appear to exist for a {}", event.getClass()
-                  .getName());
-            }
-            // Optionally re-dispatch the event to trigger @Success / @Failure receivers
-            if (ctx.getAnnotation().fireResult()) {
-              ctx.fireLater(ctx.getOriginalEvent());
-            }
+
+          Throwable thrown = ctx.wasThrown();
+          event.setFailure(thrown);
+          event.setSuccess(thrown == null);
+
+          // Optionally re-dispatch the event to trigger @Success / @Failure receivers
+          if (ctx.getAnnotation().fireResult()) {
+            ctx.fireLater(ctx.getOriginalEvent());
           }
         }
+        return toReturn;
       }
     };
   }
