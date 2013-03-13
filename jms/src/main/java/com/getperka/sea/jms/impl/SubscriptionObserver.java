@@ -93,7 +93,7 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
     if (shouldSuppress(context.getEvent().getClass())) {
       context.suppressEvent();
     }
-    subscriber.fire(context.getOriginalEvent(), context.getContext().getUserObject());
+    subscriber.fire(context.getOriginalEvent(), context.getContext());
   }
 
   @Override

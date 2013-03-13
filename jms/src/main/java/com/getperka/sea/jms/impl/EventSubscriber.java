@@ -37,6 +37,7 @@ import javax.jms.Topic;
 import org.slf4j.Logger;
 
 import com.getperka.sea.Event;
+import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.inject.EventLogger;
 import com.getperka.sea.jms.EventSubscriberException;
 import com.getperka.sea.jms.EventTransport;
@@ -158,7 +159,7 @@ public class EventSubscriber {
     }
   }
 
-  void fire(Event event, Object context) {
+  void fire(Event event, EventContext context) {
     for (EventSubscription subscription : subscribed.values()) {
       subscription.maybeSendToJms(event, context);
     }

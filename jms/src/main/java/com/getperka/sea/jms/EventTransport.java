@@ -25,6 +25,7 @@ import java.io.Serializable;
 import javax.jms.Message;
 
 import com.getperka.sea.Event;
+import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.jms.impl.EventTransportImpl;
 import com.google.inject.ImplementedBy;
 
@@ -46,7 +47,8 @@ public interface EventTransport {
   <T extends Event> T decode(Class<T> eventType, Message message) throws EventTransportException;
 
   /**
-   * Construct a JMS {@link Message} from an {@link Event} instance.
+   * Construct a JMS {@link Message} from an {@link Event} instance. An implementation may choose to
+   * return {@code null}, in which case the event will not be sent.
    */
-  Message encode(Event event) throws EventTransportException;
+  Message encode(Event event, EventContext context) throws EventTransportException;
 }

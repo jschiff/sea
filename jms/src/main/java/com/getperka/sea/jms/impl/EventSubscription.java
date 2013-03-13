@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
+import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.inject.EventLogger;
 import com.getperka.sea.jms.EventTransport;
 import com.getperka.sea.jms.EventTransportException;
@@ -70,18 +71,18 @@ public class EventSubscription implements MessageListener {
     }
   }
 
-  public void maybeSendToJms(Event event, Object context) {
+  public void maybeSendToJms(Event event, EventContext context) {
     if (!eventType.isAssignableFrom(event.getClass())) {
       return;
     }
     // Avoid send-loops
-    if (this.equals(context)) {
+    if (this.equals(context.getUserObject())) {
       return;
     }
     try {
       MessageProducer producer = getTargetProducer(event);
       if (producer != null) {
-        sendEvent(producer, event);
+        sendEvent(producer, event, context);
 
         /*
          * If the MessageProducer is a temporary one, close it to avoid the need to wait for the
@@ -159,10 +160,13 @@ public class EventSubscription implements MessageListener {
     return defaultMessageProducer;
   }
 
-  private void sendEvent(MessageProducer producer, Event event) {
+  private void sendEvent(MessageProducer producer, Event event, EventContext context) {
     Throwable ex;
     try {
-      Message message = transport.encode(event);
+      Message message = transport.encode(event, context);
+      if (message == null) {
+        return;
+      }
       message.setJMSReplyTo(returnQueue);
       producer.send(message);
       return;

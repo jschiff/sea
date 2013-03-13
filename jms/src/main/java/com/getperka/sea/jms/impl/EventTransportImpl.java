@@ -29,6 +29,7 @@ import javax.jms.ObjectMessage;
 import javax.jms.Session;
 
 import com.getperka.sea.Event;
+import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.jms.EventTransport;
 import com.getperka.sea.jms.EventTransportException;
 import com.getperka.sea.jms.MessageEvent;
@@ -82,7 +83,7 @@ public class EventTransportImpl implements EventTransport {
   }
 
   @Override
-  public Message encode(Event event) throws EventTransportException {
+  public Message encode(Event event, EventContext context) throws EventTransportException {
     try {
       if (event instanceof MessageEvent) {
         return ((MessageEvent) event).toMessage(session);
