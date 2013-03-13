@@ -41,4 +41,12 @@ import java.lang.annotation.Target;
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-public @interface Receiver {}
+public @interface Receiver {
+  /**
+   * If {@code true}, the receiver method will be invoked during the call to
+   * {@link EventDispatch#fire(Event)}, rather than on a separate thread. This is appropriate for
+   * event receivers that need to inherit some state (such as an EntityManager) from the
+   * thread-local context in which the event is being fired.
+   */
+  boolean synchronous() default false;
+}

@@ -96,7 +96,7 @@ public class InvocationManager {
       Invocation invocation = invocations.get();
       invocation.setContext(context);
       invocation.setEvent(event);
-      invocation.setInvocation(target);
+      invocation.setReceiverTarget(target);
       invocation.setState(state);
       toReturn.add(invocation);
     }

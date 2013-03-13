@@ -43,6 +43,11 @@ public interface ReceiverTarget {
   DispatchResult dispatch(Event event, EventContext context);
 
   /**
+   * Returns the value of the {@link Receiver#synchronous()} property.
+   */
+  boolean isSynchronous();
+
+  /**
    * For debugging use only. Returns the signature of the method that the ReceiverTarget will
    * execute.
    */

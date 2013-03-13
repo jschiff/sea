@@ -87,7 +87,12 @@ public class DispatchImpl implements EventDispatch, HasInjector {
     }
     List<Invocation> allInvocation = invocationManager.getInvocations(event, context);
     for (Invocation invocation : allInvocation) {
-      service.submit(invocation);
+      if (invocation.isSynchronous()) {
+        // Invocation.call() shouldn't generally throw exceptions unless things are very broken
+        invocation.call();
+      } else {
+        service.submit(invocation);
+      }
     }
   }
 

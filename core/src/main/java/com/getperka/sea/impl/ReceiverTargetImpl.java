@@ -102,6 +102,10 @@ public class ReceiverTargetImpl implements ReceiverTarget {
    */
   private List<Provider<?>> methodArgumentProviders;
   private Provider<DispatchResult> results;
+  /**
+   * Indicates that the target should be dispatched immediately when firing an event.
+   */
+  private boolean synchronous;
   private Provider<ReceiverMethodInvocation> works;
 
   protected ReceiverTargetImpl() {}
@@ -208,6 +212,10 @@ public class ReceiverTargetImpl implements ReceiverTarget {
       (method == null ? 0 : method.hashCode()) * 7;
   }
 
+  public boolean isSynchronous() {
+    return synchronous;
+  }
+
   public void setInstanceDispatch(Provider<?> provider, Method method) {
     this.instanceProvider = provider;
     this.method = method;
@@ -223,6 +231,10 @@ public class ReceiverTargetImpl implements ReceiverTarget {
     method = staticMethod;
     method.setAccessible(true);
     computeProviders();
+  }
+
+  public void setSynchronous(boolean synchronous) {
+    this.synchronous = synchronous;
   }
 
   @Override

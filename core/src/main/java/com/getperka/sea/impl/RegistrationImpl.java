@@ -76,13 +76,15 @@ public class RegistrationImpl implements Registration {
         new HashMap<Class<? extends Event>, List<ReceiverTarget>>();
 
     for (Method m : receiver.getDeclaredMethods()) {
+      Receiver annotation = m.getAnnotation(Receiver.class);
       // Ignore anything not explicitly annotated to receive events
-      if (!m.isAnnotationPresent(Receiver.class)) {
+      if (annotation == null) {
         continue;
       }
 
       // Create a ReceiverTarget to handle dispatch to the method
       ReceiverTargetImpl target = dispatchTargets.get();
+      target.setSynchronous(annotation.synchronous());
       if (Modifier.isStatic(m.getModifiers())) {
         target.setStaticDispatch(m);
       } else {

@@ -81,18 +81,25 @@ public class Invocation implements Callable<DispatchResult> {
   @Override
   public DispatchResult call() {
     logger.trace("Invocation starting: {}", this);
+    Thread currentThread = Thread.currentThread();
+    String name = currentThread.getName();
+    currentThread.setName(toString());
+
     DispatchResult toReturn = null;
-    Thread.currentThread().setName(toString());
     try {
       toReturn = target.dispatch(event, context);
     } catch (Throwable t) {
       logger.error("Unable to dispatch event", t);
     } finally {
       maybeDispatchCompleteEvent(toReturn);
-      Thread.currentThread().setName("idle");
+      currentThread.setName(name);
       manager.markComplete(this);
     }
     return toReturn;
+  }
+
+  public boolean isSynchronous() {
+    return target.isSynchronous();
   }
 
   public void setContext(EventContext context) {
@@ -103,7 +110,7 @@ public class Invocation implements Callable<DispatchResult> {
     this.event = event;
   }
 
-  public void setInvocation(ReceiverTarget target) {
+  public void setReceiverTarget(ReceiverTarget target) {
     this.target = target;
   }
 
