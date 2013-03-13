@@ -28,7 +28,7 @@ import java.lang.annotation.RetentionPolicy;
 
 import org.junit.Test;
 
-import com.getperka.sea.inject.ReceiverInstance;
+import com.getperka.sea.impl.ReceiverMethodInvocation;
 import com.getperka.sea.util.EventLatch;
 import com.google.inject.AbstractModule;
 import com.google.inject.name.Names;
@@ -51,8 +51,8 @@ public class InjectionTest {
 
     EventLatch<MyEvent> latch = new EventLatch<MyEvent>(dispatch, 1) {
       @Receiver
-      void receiver(@ReceiverInstance Object me, @IrrelevantAnnotation MyEvent evt) {
-        evt.ok = this == me;
+      void receiver(ReceiverMethodInvocation invocation, @IrrelevantAnnotation MyEvent evt) {
+        evt.ok = this == invocation.getReceiverInstance();
         countDown(evt);
       }
     };

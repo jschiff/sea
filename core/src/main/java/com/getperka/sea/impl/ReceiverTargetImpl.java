@@ -21,17 +21,13 @@ package com.getperka.sea.impl;
  */
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Queue;
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
@@ -46,18 +42,11 @@ import com.getperka.sea.EventDispatch;
 import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.EventDecorator;
-import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.impl.DecoratorMap.DecoratorInfo;
 import com.getperka.sea.inject.CurrentEvent;
 import com.getperka.sea.inject.DecoratorScope;
-import com.getperka.sea.inject.DeferredEvents;
 import com.getperka.sea.inject.EventLogger;
-import com.getperka.sea.inject.ReceiverInstance;
 import com.getperka.sea.inject.ReceiverScope;
-import com.getperka.sea.inject.ReceiverScoped;
-import com.getperka.sea.inject.WasDispatched;
-import com.getperka.sea.inject.WasReturned;
-import com.getperka.sea.inject.WasThrown;
 import com.google.inject.BindingAnnotation;
 import com.google.inject.ConfigurationException;
 import com.google.inject.Injector;
@@ -70,61 +59,6 @@ import com.google.inject.TypeLiteral;
  * costs.
  */
 public class ReceiverTargetImpl implements SettableReceiverTarget {
-  @ReceiverScoped
-  static class Work implements Callable<Object> {
-    @Inject
-    @ReceiverInstance
-    private Provider<Object> instance;
-    @EventLogger
-    @Inject
-    private Logger logger;
-    @Inject
-    private ReceiverTarget target;
-    @Inject
-    @WasDispatched
-    private AtomicBoolean wasDispatched;
-    @Inject
-    @WasReturned
-    private AtomicReference<Object> wasReturned;
-    @Inject
-    @WasThrown
-    private AtomicReference<Throwable> wasThrown;
-
-    Work() {}
-
-    @Override
-    public Object call() throws IllegalArgumentException, IllegalAccessException {
-      // Up-convert the receiver reference to the implementation type
-      ReceiverTargetImpl impl = (ReceiverTargetImpl) target;
-
-      // Obtain each argument for the method
-      Object[] args = new Object[impl.methodArgumentProviders.size()];
-      for (int i = 0, j = args.length; i < j; i++) {
-        try {
-          args[i] = impl.methodArgumentProviders.get(i).get();
-        } catch (RuntimeException e) {
-          throw new RuntimeException("Could not obtain argument " + i + " for " + impl, e);
-        }
-      }
-
-      // Now dispatch
-      try {
-        Object value = impl.method.invoke(instance.get(), args);
-        wasReturned.set(value);
-        return value;
-      } catch (InvocationTargetException e) {
-        // Clean up the stack trace
-        Throwable cause = e.getCause();
-        wasThrown.set(cause);
-        // Log this error at a reduced level
-        logger.debug("Exception added to Decorator.Context", e);
-        return null;
-      } finally {
-        wasDispatched.set(true);
-      }
-    }
-  }
-
   /**
    * Vends instances of {@link EventDecorator.Context}.
    */
@@ -137,15 +71,11 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
    * Scope data for constructing {@link EventDecorator} instances.
    */
   private DecoratorScope decoratorScope;
-  /**
-   * Events that should be fired once all decorators have completed.
-   */
-  private Provider<Queue<Event>> deferredEvents;
   private EventDispatch dispatch;
   /**
    * Scope data for constructing various components.
    */
-  private ReceiverScope eventScope;
+  private ReceiverScope receiverScope;
   /**
    * The type of event that the ReceiverTarget expects to receive.
    */
@@ -159,7 +89,7 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
    */
   private Provider<?> instanceProvider;
   /**
-   * Mainly reports errors from {@link Work}.
+   * Mainly reports errors from {@link ReceiverMethodInvocation}.
    */
   private Logger logger;
   /**
@@ -171,7 +101,7 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
    */
   private List<Provider<?>> methodArgumentProviders;
   private Provider<DispatchResult> results;
-  private Provider<Work> works;
+  private Provider<ReceiverMethodInvocation> works;
 
   protected ReceiverTargetImpl() {}
 
@@ -180,15 +110,19 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
     if (event == null || context == null) {
       throw new IllegalArgumentException();
     }
-    eventScope.enter(event, this, instanceProvider, context);
+    receiverScope.enter(event, this, context);
     try {
+      ReceiverMethodInvocation work = works.get();
+      Object instance = instanceProvider == null ? null : instanceProvider.get();
+
       // If this is an instance target without an instance, don't do any work
-      if (instanceProvider != null && !eventScope.hasReceiverInstance()) {
+      if (instanceProvider != null && instance == null) {
         return results.get();
       }
 
-      Callable<Object> toInvoke = works.get();
+      work.configure(method, instance, methodArgumentProviders);
 
+      Callable<Object> toInvoke = work;
       for (DecoratorInfo info : decoratorMap.getDecoratorInfo(method)) {
         Annotation annotation = info.getAnnotation();
         decoratorScope.enter(annotation, toInvoke);
@@ -233,7 +167,7 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
       if (toInvoke != null) {
         try {
           toInvoke.call();
-          for (Event deferred : deferredEvents.get()) {
+          for (Event deferred : work.getDeferredEvents()) {
             dispatch.fire(deferred);
           }
         } catch (Exception e) {
@@ -244,7 +178,7 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
       return results.get();
     } finally {
       decoratorScope.exit();
-      eventScope.exit();
+      receiverScope.exit();
     }
   }
 
@@ -319,19 +253,17 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
       Provider<DecoratorContext> decoratorContexts,
       DecoratorMap decoratorMap,
       DecoratorScope decoratorScope,
-      @DeferredEvents Provider<Queue<Event>> deferredEvents,
       EventDispatch dispatch,
       ReceiverScope eventScope,
       Injector injector,
       @EventLogger Logger logger,
       Provider<DispatchResult> results,
-      Provider<Work> works) {
+      Provider<ReceiverMethodInvocation> works) {
     this.decoratorContexts = decoratorContexts;
     this.decoratorMap = decoratorMap;
     this.decoratorScope = decoratorScope;
-    this.deferredEvents = deferredEvents;
     this.dispatch = dispatch;
-    this.eventScope = eventScope;
+    this.receiverScope = eventScope;
     this.injector = injector;
     this.logger = logger;
     this.results = results;

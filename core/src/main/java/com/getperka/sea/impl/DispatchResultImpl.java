@@ -20,19 +20,14 @@ package com.getperka.sea.impl;
  * #L%
  */
 
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-
 import javax.inject.Inject;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.DispatchResult;
+import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.CurrentEvent;
 import com.getperka.sea.inject.ReceiverScoped;
-import com.getperka.sea.inject.WasDispatched;
-import com.getperka.sea.inject.WasReturned;
-import com.getperka.sea.inject.WasThrown;
 
 /**
  * Provides information about the disposition of a call to
@@ -40,11 +35,18 @@ import com.getperka.sea.inject.WasThrown;
  */
 @ReceiverScoped
 public class DispatchResultImpl implements DispatchResult {
-  private Event event;
-  private boolean received;
-  private ReceiverTarget target;
-  private Throwable thrown;
-  private Object value;
+  @CurrentEvent
+  @Inject
+  Event event;
+
+  @Inject
+  ReceiverMethodInvocation invocation;
+
+  @Inject
+  EventContext context;
+
+  @Inject
+  ReceiverTarget target;
 
   protected DispatchResultImpl() {}
 
@@ -55,7 +57,7 @@ public class DispatchResultImpl implements DispatchResult {
 
   @Override
   public Object getReturnValue() {
-    return value;
+    return invocation.getWasReturned();
   }
 
   @Override
@@ -65,22 +67,11 @@ public class DispatchResultImpl implements DispatchResult {
 
   @Override
   public Throwable getThrown() {
-    return thrown;
+    return invocation.getWasThrown();
   }
 
   @Override
   public boolean wasReceived() {
-    return received;
-  }
-
-  @Inject
-  void inject(@CurrentEvent Event event, @WasDispatched AtomicBoolean received,
-      ReceiverTarget target, @WasThrown AtomicReference<Throwable> thrown,
-      @WasReturned AtomicReference<Object> value) {
-    this.event = event;
-    this.received = received.get();
-    this.target = target;
-    this.thrown = thrown.get();
-    this.value = value.get();
+    return invocation.getWasDispatched();
   }
 }

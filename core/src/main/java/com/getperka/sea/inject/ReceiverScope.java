@@ -23,11 +23,7 @@ package com.getperka.sea.inject;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.EventContext;
@@ -35,7 +31,6 @@ import com.getperka.sea.ext.ReceiverTarget;
 import com.google.inject.Key;
 import com.google.inject.OutOfScopeException;
 import com.google.inject.Provider;
-import com.google.inject.TypeLiteral;
 
 /**
  * Instances of ReceiverScope are expected to be accessed only from within a single thread. They are
@@ -48,29 +43,14 @@ public class ReceiverScope extends BaseScope {
 
     Frame(Event event, ReceiverTarget receiverTarget, EventContext context) {
       values.put(currentEventKey, event);
-      values.put(deferredEventsKey, new ConcurrentLinkedQueue<Event>());
       values.put(eventContextKey, context);
       values.put(receiverTargetKey, receiverTarget);
-      values.put(wasDispatchedKey, new AtomicBoolean());
-      values.put(wasReturnedKey, new AtomicReference<Object>());
-      values.put(wasThrownKey, new AtomicReference<Object>());
     }
   }
 
   private static final Key<Event> currentEventKey = Key.get(Event.class, CurrentEvent.class);
-  private static final Key<Queue<Event>> deferredEventsKey =
-      Key.get(new TypeLiteral<Queue<Event>>() {}, DeferredEvents.class);
   private static final Key<EventContext> eventContextKey = Key.get(EventContext.class);
-  private static final Key<Object> receiverInstanceKey = Key.get(Object.class,
-      ReceiverInstance.class);
   private static final Key<ReceiverTarget> receiverTargetKey = Key.get(ReceiverTarget.class);
-  private static final Key<AtomicBoolean> wasDispatchedKey = Key.get(AtomicBoolean.class,
-      WasDispatched.class);
-  private static final Key<AtomicReference<Object>> wasReturnedKey = Key.get(
-      new TypeLiteral<AtomicReference<Object>>() {}, WasReturned.class);
-
-  private static final Key<AtomicReference<Throwable>> wasThrownKey = Key.get(
-      new TypeLiteral<AtomicReference<Throwable>>() {}, WasThrown.class);
 
   private final ThreadLocal<Deque<Frame>> frameStack = new ThreadLocal<Deque<Frame>>() {
     @Override
@@ -79,30 +59,13 @@ public class ReceiverScope extends BaseScope {
     }
   };
 
-  public void enter(Event event, ReceiverTarget receiverTarget,
-      javax.inject.Provider<?> receiverInstance, EventContext context) {
+  public void enter(Event event, ReceiverTarget receiverTarget, EventContext context) {
     Frame frame = new Frame(event, receiverTarget, context);
     frameStack.get().push(frame);
-    /*
-     * Slightly delay instantiation of the receiver instance until the frame is installed. This
-     * ensures that the receiver instance can use @ReceiverScoped values.
-     */
-    Object instance = receiverInstance == null ? null : receiverInstance.get();
-    if (instance == null) {
-      instance = NULL;
-    }
-    frame.values.put(receiverInstanceKey, instance);
   }
 
   public void exit() {
     frameStack.get().pop();
-  }
-
-  /**
-   * Returns {@code true} if the {@link ReceiverInstance} binding is non-{@code null}.
-   */
-  public boolean hasReceiverInstance() {
-    return !NULL.equals(frameStack.get().peek().values.get(receiverInstanceKey));
   }
 
   public boolean inReceiver() {

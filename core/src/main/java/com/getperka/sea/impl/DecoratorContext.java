@@ -21,13 +21,9 @@ package com.getperka.sea.impl;
  */
 
 import java.lang.annotation.Annotation;
-import java.util.Queue;
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import javax.inject.Inject;
-import javax.inject.Provider;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.EventContext;
@@ -35,32 +31,34 @@ import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.CurrentEvent;
 import com.getperka.sea.inject.DecoratorScoped;
-import com.getperka.sea.inject.DeferredEvents;
-import com.getperka.sea.inject.ReceiverInstance;
-import com.getperka.sea.inject.WasDispatched;
-import com.getperka.sea.inject.WasThrown;
 
 @DecoratorScoped
 public class DecoratorContext implements EventDecorator.Context<Annotation, Event> {
-  private Annotation annotation;
-  private EventContext context;
-  private Queue<Event> deferredEvents;
-  private Event event;
-  private ReceiverTarget target;
-  private AtomicBoolean wasDispatched;
-  private AtomicReference<Throwable> wasThrown;
-  private Callable<Object> work;
-  /**
-   * A {@link Provider} because the instance could be null for a static dispatch.
-   */
-  private Provider<Object> receiverInstance;
-  private Event originalEvent;
+  @Inject
+  Annotation annotation;
+  @Inject
+  EventContext context;
+  @Inject
+  @CurrentEvent
+  Event event;
+  @Inject
+  ReceiverTarget target;
+  @Inject
+  ReceiverMethodInvocation invocation;
+  @Inject
+  @CurrentEvent
+  Event originalEvent;
+  @Inject
+  Callable<Object> work;
 
+  /**
+   * Requires injection.
+   */
   protected DecoratorContext() {}
 
   @Override
   public void fireLater(Event event) {
-    deferredEvents.add(event);
+    invocation.getDeferredEvents().add(event);
   }
 
   @Override
@@ -85,7 +83,7 @@ public class DecoratorContext implements EventDecorator.Context<Annotation, Even
 
   @Override
   public Object getReceiverInstance() {
-    return receiverInstance.get();
+    return invocation.getReceiverInstance();
   }
 
   @Override
@@ -100,30 +98,12 @@ public class DecoratorContext implements EventDecorator.Context<Annotation, Even
 
   @Override
   public boolean wasDispatched() {
-    return wasDispatched.get();
+    return invocation.getWasDispatched();
   }
 
   @Override
   public Throwable wasThrown() {
-    return wasThrown.get();
-  }
-
-  @Inject
-  void inject(Annotation annotation, EventContext context,
-      @CurrentEvent Event originalEvent, @ReceiverInstance Provider<Object> receiverInstance,
-      ReceiverTarget target, @WasDispatched AtomicBoolean wasDispatched,
-      @WasThrown AtomicReference<Throwable> wasThrown, Callable<Object> work,
-      @DeferredEvents Queue<Event> deferredEvents) {
-    this.annotation = annotation;
-    this.context = context;
-    this.deferredEvents = deferredEvents;
-    this.event = originalEvent;
-    this.originalEvent = originalEvent;
-    this.receiverInstance = receiverInstance;
-    this.target = target;
-    this.wasDispatched = wasDispatched;
-    this.wasThrown = wasThrown;
-    this.work = work;
+    return invocation.getWasThrown();
   }
 
   /**

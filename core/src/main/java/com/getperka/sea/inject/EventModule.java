@@ -21,13 +21,10 @@ package com.getperka.sea.inject;
  */
 
 import java.lang.annotation.Annotation;
-import java.util.Queue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
@@ -120,28 +117,8 @@ public class EventModule extends AbstractModule {
         .annotatedWith(CurrentEvent.class)
         .toProvider(scope.<Event> provider())
         .in(scope);
-    bind(new TypeLiteral<Queue<Event>>() {})
-        .annotatedWith(DeferredEvents.class)
-        .toProvider(scope.<Queue<Event>> provider())
-        .in(scope);
     bind(EventContext.class)
         .toProvider(scope.<EventContext> provider())
-        .in(scope);
-    bind(AtomicBoolean.class)
-        .annotatedWith(WasDispatched.class)
-        .toProvider(scope.<AtomicBoolean> provider())
-        .in(scope);
-    bind(new TypeLiteral<AtomicReference<Object>>() {})
-        .annotatedWith(WasReturned.class)
-        .toProvider(scope.<AtomicReference<Object>> provider())
-        .in(scope);
-    bind(new TypeLiteral<AtomicReference<Throwable>>() {})
-        .annotatedWith(WasThrown.class)
-        .toProvider(scope.<AtomicReference<Throwable>> provider())
-        .in(scope);
-    bind(Object.class)
-        .annotatedWith(ReceiverInstance.class)
-        .toProvider(scope.<Object> provider())
         .in(scope);
     bind(ReceiverTarget.class)
         .toProvider(scope.<ReceiverTarget> provider())
