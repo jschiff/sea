@@ -35,8 +35,6 @@ import com.getperka.sea.inject.DecoratorScoped;
 @DecoratorScoped
 public class DecoratorContext implements EventDecorator.Context<Annotation, Event> {
   @Inject
-  Annotation annotation;
-  @Inject
   EventContext context;
   @Inject
   @CurrentEvent
@@ -48,13 +46,23 @@ public class DecoratorContext implements EventDecorator.Context<Annotation, Even
   @Inject
   @CurrentEvent
   Event originalEvent;
-  @Inject
-  Callable<Object> work;
+
+  private Annotation annotation;
+  private Callable<Object> work;
 
   /**
    * Requires injection.
    */
   protected DecoratorContext() {}
+
+  /**
+   * Store additional information in the DecoratorContext
+   */
+  public void configure(Annotation annotation, Event event, Callable<Object> work) {
+    this.annotation = annotation;
+    this.event = event;
+    this.work = work;
+  }
 
   @Override
   public void fireLater(Event event) {
@@ -104,12 +112,5 @@ public class DecoratorContext implements EventDecorator.Context<Annotation, Even
   @Override
   public Throwable wasThrown() {
     return invocation.getWasThrown();
-  }
-
-  /**
-   * A cheat method to allow an event facet to be substituted for the actual event being dispatched.
-   */
-  void setEvent(Event event) {
-    this.event = event;
   }
 }

@@ -20,8 +20,6 @@ package com.getperka.sea.inject;
  * #L%
  */
 
-import java.lang.annotation.Annotation;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -42,7 +40,6 @@ import com.getperka.sea.impl.SettableRegistrationImpl;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import com.google.inject.TypeLiteral;
 
 public class EventModule extends AbstractModule {
 
@@ -95,14 +92,6 @@ public class EventModule extends AbstractModule {
     DecoratorScope decoratorScope = new DecoratorScope();
     bindScope(DecoratorScoped.class, decoratorScope);
     bind(DecoratorScope.class).toInstance(decoratorScope);
-
-    bind(Annotation.class)
-        .toProvider(decoratorScope.<Annotation> provider())
-        .in(decoratorScope);
-
-    bind(new TypeLiteral<Callable<Object>>() {})
-        .toProvider(decoratorScope.<Callable<Object>> provider())
-        .in(decoratorScope);
   }
 
   private void bindReceiverScope() {

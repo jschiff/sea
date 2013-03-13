@@ -20,16 +20,13 @@ package com.getperka.sea.inject;
  * #L%
  */
 
-import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Callable;
 
 import com.getperka.sea.ext.EventDecorator;
 import com.google.inject.Key;
 import com.google.inject.OutOfScopeException;
 import com.google.inject.Provider;
-import com.google.inject.TypeLiteral;
 
 /**
  * Defines a scope whose lifetime is a call to {@link EventDecorator#wrap}.
@@ -37,15 +34,13 @@ import com.google.inject.TypeLiteral;
 public class DecoratorScope extends BaseScope {
   private final ThreadLocal<Map<Key<?>, Object>> map = new ThreadLocal<Map<Key<?>, Object>>();
 
-  public void enter(Annotation annotation, Callable<Object> work) {
+  public void enter() {
     Map<Key<?>, Object> localMap = map.get();
     if (localMap != null) {
       throw new IllegalStateException("DecoratorScope is not reentrant");
     }
     localMap = new HashMap<Key<?>, Object>();
     map.set(localMap);
-    localMap.put(Key.get(Annotation.class), annotation);
-    localMap.put(Key.get(new TypeLiteral<Callable<Object>>() {}), work);
   }
 
   public void exit() {

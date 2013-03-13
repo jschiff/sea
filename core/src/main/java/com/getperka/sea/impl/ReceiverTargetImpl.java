@@ -126,7 +126,7 @@ public class ReceiverTargetImpl implements ReceiverTarget {
       Callable<Object> toInvoke = work;
       for (DecoratorInfo info : decoratorMap.getDecoratorInfo(method)) {
         Annotation annotation = info.getAnnotation();
-        decoratorScope.enter(annotation, toInvoke);
+        decoratorScope.enter();
         try {
           EventDecorator<Annotation, Event> eventDecorator = info.getProvider().get();
           /*
@@ -150,9 +150,9 @@ public class ReceiverTargetImpl implements ReceiverTarget {
             if (desiredFacet == null) {
               continue;
             }
-            // Create the context, set the facet, and wrap
+            // Create the context, set the contextual data, and wrap
             DecoratorContext ctx = decoratorContexts.get();
-            ctx.setEvent(desiredFacet);
+            ctx.configure(annotation, desiredFacet, toInvoke);
             toInvoke = eventDecorator.wrap(ctx);
 
             // If the decorator has nullified the work, don't do anything else
