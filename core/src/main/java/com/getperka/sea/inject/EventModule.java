@@ -37,8 +37,6 @@ import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.impl.DispatchImpl;
 import com.getperka.sea.impl.DispatchResultImpl;
-import com.getperka.sea.impl.ReceiverTargetImpl;
-import com.getperka.sea.impl.SettableReceiverTarget;
 import com.getperka.sea.impl.SettableRegistration;
 import com.getperka.sea.impl.SettableRegistrationImpl;
 import com.google.inject.AbstractModule;
@@ -66,7 +64,6 @@ public class EventModule extends AbstractModule {
 
     bind(EventDispatch.class).to(DispatchImpl.class);
 
-    bind(SettableReceiverTarget.class).to(ReceiverTargetImpl.class);
     bind(SettableRegistration.class).to(SettableRegistrationImpl.class);
   }
 

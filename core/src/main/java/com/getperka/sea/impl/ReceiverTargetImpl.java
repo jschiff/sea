@@ -42,6 +42,7 @@ import com.getperka.sea.EventDispatch;
 import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.EventDecorator;
+import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.impl.DecoratorMap.DecoratorInfo;
 import com.getperka.sea.inject.CurrentEvent;
 import com.getperka.sea.inject.DecoratorScope;
@@ -58,7 +59,7 @@ import com.google.inject.TypeLiteral;
  * {@link EventDecorator} configuration is memoized in instances of this class to reduce reflection
  * costs.
  */
-public class ReceiverTargetImpl implements SettableReceiverTarget {
+public class ReceiverTargetImpl implements ReceiverTarget {
   /**
    * Vends instances of {@link EventDecorator.Context}.
    */
@@ -197,7 +198,6 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
       (method == other.method || method.equals(other.method));
   }
 
-  @Override
   public Class<? extends Event> getEventType() {
     return eventType;
   }
@@ -208,7 +208,6 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
       (method == null ? 0 : method.hashCode()) * 7;
   }
 
-  @Override
   public void setInstanceDispatch(Provider<?> provider, Method method) {
     this.instanceProvider = provider;
     this.method = method;
@@ -216,7 +215,6 @@ public class ReceiverTargetImpl implements SettableReceiverTarget {
     computeProviders();
   }
 
-  @Override
   public void setStaticDispatch(Method staticMethod) {
     if (!Modifier.isStatic(staticMethod.getModifiers())) {
       throw new IllegalArgumentException();

@@ -41,7 +41,7 @@ import com.google.inject.Injector;
 
 public class SettableRegistrationImpl implements SettableRegistration {
   private DispatchMap dispatchMap;
-  private Provider<SettableReceiverTarget> dispatchTargets;
+  private Provider<ReceiverTargetImpl> dispatchTargets;
   private Injector injector;
   private Logger logger;
   private Map<Class<? extends Event>, List<ReceiverTarget>> targets = Collections.emptyMap();
@@ -84,7 +84,7 @@ public class SettableRegistrationImpl implements SettableRegistration {
       }
 
       // Create a ReceiverTarget to handle dispatch to the method
-      SettableReceiverTarget target = dispatchTargets.get();
+      ReceiverTargetImpl target = dispatchTargets.get();
       if (Modifier.isStatic(m.getModifiers())) {
         target.setStaticDispatch(m);
       } else {
@@ -121,7 +121,7 @@ public class SettableRegistrationImpl implements SettableRegistration {
   }
 
   @Inject
-  void inject(DispatchMap dispatchMap, Provider<SettableReceiverTarget> dispatchTargets,
+  void inject(DispatchMap dispatchMap, Provider<ReceiverTargetImpl> dispatchTargets,
       Injector injector, @EventLogger Logger logger) {
     this.dispatchMap = dispatchMap;
     this.dispatchTargets = dispatchTargets;
