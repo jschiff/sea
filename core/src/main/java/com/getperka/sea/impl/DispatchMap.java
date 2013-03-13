@@ -66,6 +66,9 @@ public class DispatchMap {
     }
   }
 
+  @Inject
+  Provider<RegistrationImpl> registrations;
+
   /**
    * Memoizes return values in {@link #getTargets(Class)}.
    */
@@ -75,13 +78,12 @@ public class DispatchMap {
   /**
    * The main registration datastructure.
    */
-  private final Queue<SettableRegistration> registered = new ConcurrentLinkedQueue<SettableRegistration>();
-  private Provider<SettableRegistration> registrations;
+  private final Queue<RegistrationImpl> registered = new ConcurrentLinkedQueue<RegistrationImpl>();
   private final ReferenceQueue<Object> weakReceiverQueue = new ReferenceQueue<Object>();
 
   protected DispatchMap() {}
 
-  public void cancel(SettableRegistration registration) {
+  public void cancel(Registration registration) {
     registered.remove(registration);
     cache.clear();
   }
@@ -116,7 +118,7 @@ public class DispatchMap {
   }
 
   public <T> Registration register(Class<T> receiver, Provider<? extends T> provider) {
-    SettableRegistration registration = registrations.get();
+    RegistrationImpl registration = registrations.get();
     registration.set(receiver, provider);
     registered.add(registration);
     cache.clear();
@@ -156,17 +158,12 @@ public class DispatchMap {
     // Use a Set to de-duplicate targets if there are multiple registrations
     Set<ReceiverTarget> toReturn = new HashSet<ReceiverTarget>();
 
-    for (Iterator<SettableRegistration> it = registered.iterator(); it.hasNext();) {
-      SettableRegistration registration = it.next();
+    for (Iterator<RegistrationImpl> it = registered.iterator(); it.hasNext();) {
+      RegistrationImpl registration = it.next();
       toReturn.addAll(registration.getReceiverTargets(event));
     }
 
     return toReturn.isEmpty() ? Collections.<ReceiverTarget> emptyList() :
         Collections.unmodifiableList(new ArrayList<ReceiverTarget>(toReturn));
-  }
-
-  @Inject
-  void inject(Provider<SettableRegistration> registrations) {
-    this.registrations = registrations;
   }
 }

@@ -35,18 +35,19 @@ import org.slf4j.Logger;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.Receiver;
+import com.getperka.sea.Registration;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.EventLogger;
 import com.google.inject.Injector;
 
-public class SettableRegistrationImpl implements SettableRegistration {
+public class RegistrationImpl implements Registration {
   private DispatchMap dispatchMap;
   private Provider<ReceiverTargetImpl> dispatchTargets;
   private Injector injector;
   private Logger logger;
   private Map<Class<? extends Event>, List<ReceiverTarget>> targets = Collections.emptyMap();
 
-  protected SettableRegistrationImpl() {}
+  protected RegistrationImpl() {}
 
   @Override
   public void cancel() {
@@ -54,7 +55,6 @@ public class SettableRegistrationImpl implements SettableRegistration {
     dispatchMap.cancel(this);
   }
 
-  @Override
   public List<ReceiverTarget> getReceiverTargets(Class<? extends Event> event) {
     List<ReceiverTarget> toReturn = new ArrayList<ReceiverTarget>();
     for (Map.Entry<Class<? extends Event>, List<ReceiverTarget>> entry : targets.entrySet()) {
@@ -66,12 +66,10 @@ public class SettableRegistrationImpl implements SettableRegistration {
     return toReturn;
   }
 
-  @Override
   public boolean isCanceled() {
     return targets.isEmpty();
   }
 
-  @Override
   public <T> void set(Class<T> receiver, Provider<? extends T> provider) {
     // Accumulate state in a new map
     Map<Class<? extends Event>, List<ReceiverTarget>> temp =
