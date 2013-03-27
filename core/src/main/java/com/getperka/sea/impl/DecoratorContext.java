@@ -105,6 +105,16 @@ public class DecoratorContext implements EventDecorator.Context<Annotation, Even
   }
 
   @Override
+  public void shortCircuit() {
+    invocation.shortCircuit(null);
+  }
+
+  @Override
+  public void shortCircuit(Throwable t) {
+    invocation.shortCircuit(t);
+  }
+
+  @Override
   public boolean wasDispatched() {
     return invocation.getWasDispatched();
   }

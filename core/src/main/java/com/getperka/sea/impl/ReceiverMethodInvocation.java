@@ -1,4 +1,5 @@
 package com.getperka.sea.impl;
+
 /*
  * #%L
  * Simple Event Architecture - Core
@@ -111,5 +112,10 @@ public class ReceiverMethodInvocation implements Callable<Object> {
 
   public Throwable getWasThrown() {
     return wasThrown.get();
+  }
+
+  public void shortCircuit(Throwable t) {
+    wasDispatched.set(true);
+    wasThrown.set(t);
   }
 }

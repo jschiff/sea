@@ -160,7 +160,7 @@ public class ReceiverTargetImpl implements ReceiverTarget {
             toInvoke = eventDecorator.wrap(ctx);
 
             // If the decorator has nullified the work, don't do anything else
-            if (toInvoke == null) {
+            if (toInvoke == null || ctx.wasDispatched()) {
               break;
             }
           }
@@ -212,6 +212,7 @@ public class ReceiverTargetImpl implements ReceiverTarget {
       (method == null ? 0 : method.hashCode()) * 7;
   }
 
+  @Override
   public boolean isSynchronous() {
     return synchronous;
   }

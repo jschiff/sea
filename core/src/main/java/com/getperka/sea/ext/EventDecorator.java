@@ -142,6 +142,25 @@ public interface EventDecorator<A extends Annotation, E extends Event> {
     Callable<Object> getWork();
 
     /**
+     * Prevent any subsequent decorators or the receiver method from being invoked. This method will
+     * cause {@link #wasDispatched()} to return {@code true} so that any active decorators can
+     * perform post-dispatch tasks. This method may be called from
+     * {@link EventDecorator#wrap(Context)} in preference to returning {@code null} or it may be
+     * called from within the returned Callable to only partially execute the decorator chain.
+     */
+    void shortCircuit();
+
+    /**
+     * Prevent any subsequent decorators or the receiver method from being invoked. This method will
+     * cause {@link #wasDispatched()} to return {@code true} and {@code t} to be returned from
+     * {@link #wasThrown()}. The use of this method for error reporting is preferable to throwing
+     * exceptions from the Callable returned from {@link EventDecorator#wrap(Context)}.
+     * 
+     * @param t a Throwable to return from {@link #wasThrown()}
+     */
+    void shortCircuit(Throwable t);
+
+    /**
      * Returns {@code true} if the {@link ReceiverTarget} was invoked with an {@link Event} (i.e.
      * none of the target's {@link EventDecorator} wrappers returned {@code null}).
      */
