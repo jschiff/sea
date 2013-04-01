@@ -88,6 +88,11 @@ public interface EventObserver<A extends Annotation, E extends Event> {
     Event getOriginalEvent();
 
     /**
+     * Returns {@code true} if {@link #suppressEvent()} was called.
+     */
+    boolean isSuppressed();
+
+    /**
      * Calling this method will prevent the Event from being dispatched to any receivers.
      * Suppressing an event does not short-circuit any remaining observers.
      */

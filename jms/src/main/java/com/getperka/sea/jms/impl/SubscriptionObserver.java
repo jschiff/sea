@@ -90,6 +90,10 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
     if (context.getContext().getUserObject() instanceof EventSubscription) {
       return;
     }
+    // Don't send already-suppressed events
+    if (context.isSuppressed()) {
+      return;
+    }
     if (shouldSuppress(context.getEvent().getClass())) {
       context.suppressEvent();
     }

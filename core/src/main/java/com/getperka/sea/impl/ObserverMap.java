@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
@@ -96,7 +97,7 @@ public class ObserverMap {
   }
 
   public boolean shouldFire(final Event event, final EventContext context) {
-    final boolean[] shouldFire = { true };
+    final AtomicBoolean shouldFire = new AtomicBoolean(true);
     for (ObserverRegistration registration : registrations) {
       final Annotation annotation = registration.annotation;
       EventObserver<Annotation, Event> filter = registration.observer;
@@ -136,8 +137,13 @@ public class ObserverMap {
           }
 
           @Override
+          public boolean isSuppressed() {
+            return !shouldFire.get();
+          }
+
+          @Override
           public void suppressEvent() {
-            shouldFire[0] = false;
+            shouldFire.set(false);
           }
         };
 
@@ -145,7 +151,7 @@ public class ObserverMap {
         filter.observeEvent(ctx);
       }
     }
-    return shouldFire[0];
+    return shouldFire.get();
   }
 
   public void shutdown() {
