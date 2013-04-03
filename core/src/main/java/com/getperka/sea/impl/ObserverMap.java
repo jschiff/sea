@@ -49,11 +49,33 @@ import com.google.inject.TypeLiteral;
 public class ObserverMap {
   static class ObserverRegistration {
     final Annotation annotation;
+    final Class<? extends Event> desiredEventType;
     final EventObserver<Annotation, Event> observer;
 
     public ObserverRegistration(Annotation annotation, EventObserver<Annotation, Event> observer) {
       this.annotation = annotation;
       this.observer = observer;
+
+      ParameterizedType type = (ParameterizedType) TypeLiteral.get(observer.getClass())
+          .getSupertype(EventObserver.class)
+          .getType();
+      Type[] typeArgs = type.getActualTypeArguments();
+
+      // Determine the Annotation and Event type that the filter wants
+      Class<? extends Annotation> desiredAnnotationType =
+          TypeLiteral.get(typeArgs[0]).getRawType().asSubclass(Annotation.class);
+
+      if (!desiredAnnotationType.isAssignableFrom(annotation.annotationType())) {
+        throw new IllegalArgumentException("EventObserver " + observer.getClass().getName()
+          + " is parameterized with annotation type " + desiredAnnotationType.getName()
+          + " which does not equal the bound annotation " + annotation.annotationType().getName());
+      }
+
+      desiredEventType = TypeLiteral.get(typeArgs[1]).getRawType().asSubclass(Event.class);
+    }
+
+    public Event acceptsDesiredFacet(Event evt) {
+      return BaseCompositeEvent.asEventFacet(desiredEventType, evt);
     }
   }
 
@@ -99,57 +121,43 @@ public class ObserverMap {
   public boolean shouldFire(final Event event, final EventContext context) {
     final AtomicBoolean shouldFire = new AtomicBoolean(true);
     for (ObserverRegistration registration : registrations) {
-      final Annotation annotation = registration.annotation;
+
       EventObserver<Annotation, Event> filter = registration.observer;
 
-      // Check provider to annotation assignability, for sanity's sake
-      ParameterizedType type = (ParameterizedType) TypeLiteral.get(filter.getClass())
-          .getSupertype(EventObserver.class)
-          .getType();
-      Type[] typeArgs = type.getActualTypeArguments();
+      final Event desiredFacet = registration.acceptsDesiredFacet(event);
+      if (desiredFacet == null) {
+        continue;
+      }
 
-      // Determine the Annotation and Event type that the filter wants
-      Class<?> desiredAnnotationType = TypeLiteral.get(typeArgs[0]).getRawType();
-      Class<? extends Event> desiredEventType =
-          TypeLiteral.get(typeArgs[1]).getRawType().asSubclass(Event.class);
-
-      if (desiredAnnotationType.isAssignableFrom(annotation.annotationType())) {
-        // Cast or extract the desired event facet
-        final Event desiredFacet = BaseCompositeEvent.asEventFacet(desiredEventType, event);
-        if (desiredFacet == null) {
-          continue;
+      EventObserver.Context<Event> ctx = new EventObserver.Context<Event>() {
+        @Override
+        public EventContext getContext() {
+          return context;
         }
 
-        EventObserver.Context<Event> ctx = new EventObserver.Context<Event>() {
-          @Override
-          public EventContext getContext() {
-            return context;
-          }
+        @Override
+        public Event getEvent() {
+          return desiredFacet;
+        }
 
-          @Override
-          public Event getEvent() {
-            return desiredFacet;
-          }
+        @Override
+        public Event getOriginalEvent() {
+          return event;
+        }
 
-          @Override
-          public Event getOriginalEvent() {
-            return event;
-          }
+        @Override
+        public boolean isSuppressed() {
+          return !shouldFire.get();
+        }
 
-          @Override
-          public boolean isSuppressed() {
-            return !shouldFire.get();
-          }
+        @Override
+        public void suppressEvent() {
+          shouldFire.set(false);
+        }
+      };
 
-          @Override
-          public void suppressEvent() {
-            shouldFire.set(false);
-          }
-        };
-
-        // Allow all filters to fire
-        filter.observeEvent(ctx);
-      }
+      // Allow all filters to fire
+      filter.observeEvent(ctx);
     }
     return shouldFire.get();
   }
