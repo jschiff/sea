@@ -167,6 +167,12 @@ public interface EventDecorator<A extends Annotation, E extends Event> {
     boolean wasDispatched();
 
     /**
+     * Returns {@code true} if the {@link ReceiverTarget} called {@link EventContext#suspend()}.
+     * EventDecorators should expect that the event may be re-fired.
+     */
+    boolean wasSuspended();
+
+    /**
      * Returns the exception that was thrown by the {@link ReceiverTarget}.
      */
     Throwable wasThrown();

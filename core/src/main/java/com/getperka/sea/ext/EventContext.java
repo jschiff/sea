@@ -1,4 +1,5 @@
 package com.getperka.sea.ext;
+
 /*
  * #%L
  * Simple Event Architecture - Core
@@ -35,4 +36,20 @@ public interface EventContext {
 
    */
   Object getUserObject();
+
+  /**
+   * Indicates that the receiver method does not wish to completely process the event. Calling
+   * {@link SuspendedEvent#resume() resume()} on the returned object will invoke the receiver method
+   * that called {@code suspend}.
+   * <p>
+   * Suspending an event in one receiver does not affect dispatch to other receivers that may also
+   * receive the event, however it will delay any {@link DispatchCompleteEvent} until the event is
+   * resumed.
+   * <p>
+   * It is the responsibility of any {@link EventDecorator} instances in the dispatch stack to
+   * properly release resources and save any temporary state associated with the event.
+   * 
+   * @see EventDecorator.Context#wasSuspended()
+   */
+  SuspendedEvent suspend();
 }

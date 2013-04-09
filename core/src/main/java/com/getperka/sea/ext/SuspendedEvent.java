@@ -1,12 +1,10 @@
 package com.getperka.sea.ext;
 
-import com.getperka.sea.Receiver;
-
 /*
  * #%L
- * Simple Event Architecture
+ * Simple Event Architecture - Core
  * %%
- * Copyright (C) 2012 Perka Inc.
+ * Copyright (C) 2012 - 2013 Perka Inc.
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,22 +20,16 @@ import com.getperka.sea.Receiver;
  * #L%
  */
 
-/**
- * Encapsulates a method and an instance on which to execute it.
- * <p>
- * Two ReceiverTargets are equal only if they will dispatch to the same method on the same instance
- * (or no instance in the case of static receivers).
- */
-public interface ReceiverTarget {
-  /**
-   * Returns the value of the {@link Receiver#synchronous()} property.
-   */
-  boolean isSynchronous();
 
+/**
+ * A handle to an event whose processing was suspended by its receiver method. Calling
+ * {@link #resume()} will invoke the specific receiver method that suspended the event.
+ */
+public interface SuspendedEvent {
   /**
-   * For debugging use only. Returns the signature of the method that the ReceiverTarget will
-   * execute.
+   * Resume the receiver method that suspended the event. This method may be called only once on a
+   * specific instance of {@code SuspendedEvent}. If the event is re-suspended, the newly returned
+   * {@code SuspendedEvent} must be used to re-resume the event.
    */
-  @Override
-  String toString();
+  void resume();
 }

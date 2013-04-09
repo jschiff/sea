@@ -48,19 +48,25 @@ import com.getperka.sea.inject.ReceiverScope;
  */
 @Singleton
 public class InvocationManager {
+  @Inject
   private EventDispatch dispatch;
   private AtomicBoolean isDraining = new AtomicBoolean();
-  private Provider<Invocation> invocations;
+  @Inject
+  private Provider<ReceiverStackInvocation.Unscoped> invocations;
+  @EventLogger
+  @Inject
   private Logger logger;
+  @Inject
   private DispatchMap map;
   private final AtomicInteger pendingInvocations = new AtomicInteger();
   private final Lock pendingLock = new ReentrantLock();
   private final Condition pendingLockCondition = pendingLock.newCondition();
+  @Inject
   private ReceiverScope receiverScope;
 
   protected InvocationManager() {}
 
-  public List<Invocation> getInvocations(Event event, EventContext context) {
+  public List<ReceiverStackInvocation> getInvocations(Event event, EventContext context) {
 
     // Get the list of receiver methods to invoke
     List<ReceiverTarget> targets = map.getTargets(event.getClass());
@@ -76,7 +82,7 @@ public class InvocationManager {
       pendingLock.unlock();
     }
 
-    List<Invocation> toReturn = new ArrayList<Invocation>();
+    List<ReceiverStackInvocation> toReturn = new ArrayList<ReceiverStackInvocation>();
 
     // Fire an empty DispatchComplete if there are no receivers
     if (targets.isEmpty() && !(event instanceof DispatchCompleteEvent)) {
@@ -90,10 +96,10 @@ public class InvocationManager {
       return toReturn;
     }
 
-    Invocation.State state = new Invocation.State(targets.size());
+    ReceiverStackInvocation.State state = new ReceiverStackInvocation.State(targets.size());
 
     for (ReceiverTarget target : targets) {
-      Invocation invocation = invocations.get();
+      ReceiverStackInvocation invocation = invocations.get();
       invocation.setContext(context);
       invocation.setEvent(event);
       invocation.setReceiverTarget(target);
@@ -128,17 +134,7 @@ public class InvocationManager {
     }
   }
 
-  @Inject
-  void inject(EventDispatch dispatch, Provider<Invocation> invocations, @EventLogger Logger logger,
-      DispatchMap map, ReceiverScope receiverScope) {
-    this.dispatch = dispatch;
-    this.invocations = invocations;
-    this.logger = logger;
-    this.map = map;
-    this.receiverScope = receiverScope;
-  }
-
-  void markComplete(Invocation invocation) {
+  void markComplete(ReceiverStackInvocation invocation) {
     pendingLock.lock();
     try {
       if (pendingInvocations.decrementAndGet() < 0) {

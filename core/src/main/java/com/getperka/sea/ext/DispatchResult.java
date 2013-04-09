@@ -1,4 +1,5 @@
 package com.getperka.sea.ext;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -53,5 +54,10 @@ public interface DispatchResult {
    * Returns {@code true} if the receiver method was actually called.
    */
   boolean wasReceived();
+
+  /**
+   * Returns {@code true} if the receiver method called {@link EventContext#suspend()}.
+   */
+  boolean wasSuspended();
 
 }

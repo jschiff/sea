@@ -50,8 +50,9 @@ class ImplementationFilter implements EventDecorator<Implementation, OutcomeEven
       public Object call() throws Exception {
         OutcomeEvent event = ctx.getEvent();
         Object toReturn = ctx.getWork().call();
-        // Only record data if the underlying ReceiverTarget was invoked.
-        if (ctx.wasDispatched()) {
+        if (ctx.wasSuspended()) {
+          // Do nothing, and let the event get fired again in the future
+        } else if (ctx.wasDispatched()) {
           /*
            * Record the implementation before setting the success property, that way if the
            * @Success filter hasn't yet run on the current sequence number, it won't accidentally

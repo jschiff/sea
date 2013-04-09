@@ -47,7 +47,6 @@ import com.getperka.sea.impl.DecoratorMap.DecoratorInfo;
 import com.getperka.sea.inject.CurrentEvent;
 import com.getperka.sea.inject.DecoratorScope;
 import com.getperka.sea.inject.EventLogger;
-import com.getperka.sea.inject.ReceiverScope;
 import com.google.inject.BindingAnnotation;
 import com.google.inject.ConfigurationException;
 import com.google.inject.Injector;
@@ -63,20 +62,20 @@ public class ReceiverTargetImpl implements ReceiverTarget {
   /**
    * Vends instances of {@link EventDecorator.Context}.
    */
+  @Inject
   private Provider<DecoratorContext> decoratorContexts;
   /**
    * Holds information about annotation bindings.
    */
+  @Inject
   private DecoratorMap decoratorMap;
   /**
    * Scope data for constructing {@link EventDecorator} instances.
    */
+  @Inject
   private DecoratorScope decoratorScope;
+  @Inject
   private EventDispatch dispatch;
-  /**
-   * Scope data for constructing various components.
-   */
-  private ReceiverScope receiverScope;
   /**
    * The type of event that the ReceiverTarget expects to receive.
    */
@@ -84,6 +83,7 @@ public class ReceiverTargetImpl implements ReceiverTarget {
   /**
    * Used to retrieve references to providers.
    */
+  @Inject
   private Injector injector;
   /**
    * Set via {@link #setInstanceDispatch} or {@link #setStaticDispatch}.
@@ -92,6 +92,8 @@ public class ReceiverTargetImpl implements ReceiverTarget {
   /**
    * Mainly reports errors from {@link ReceiverMethodInvocation}.
    */
+  @EventLogger
+  @Inject
   private Logger logger;
   /**
    * Set via {@link #setInstanceDispatch} or {@link #setStaticDispatch}.
@@ -101,90 +103,86 @@ public class ReceiverTargetImpl implements ReceiverTarget {
    * Contains providers for each argument of the method, including the current event.
    */
   private List<Provider<?>> methodArgumentProviders;
+  @Inject
   private Provider<DispatchResult> results;
   /**
    * Indicates that the target should be dispatched immediately when firing an event.
    */
   private boolean synchronous;
+  @Inject
   private Provider<ReceiverMethodInvocation> works;
 
   protected ReceiverTargetImpl() {}
 
-  @Override
   public DispatchResult dispatch(Event event, EventContext context) {
     if (event == null || context == null) {
       throw new IllegalArgumentException();
     }
-    receiverScope.enter(event, this, context);
-    try {
-      ReceiverMethodInvocation work = works.get();
-      Object instance = instanceProvider == null ? null : instanceProvider.get();
 
-      // If this is an instance target without an instance, don't do any work
-      if (instanceProvider != null && instance == null) {
-        return results.get();
-      }
+    ReceiverMethodInvocation work = works.get();
+    Object instance = instanceProvider == null ? null : instanceProvider.get();
 
-      work.configure(method, instance, methodArgumentProviders);
-
-      Callable<Object> toInvoke = work;
-      for (DecoratorInfo info : decoratorMap.getDecoratorInfo(method)) {
-        Annotation annotation = info.getAnnotation();
-        decoratorScope.enter();
-        try {
-          EventDecorator<Annotation, Event> eventDecorator = info.getProvider().get();
-          /*
-           * If the decorator can't receive the event, just drop it. This allows decorators that are
-           * specific to a certain event subtype to be applied to a receiver method that accepts a
-           * wider event type.
-           */
-          ParameterizedType type = (ParameterizedType) TypeLiteral.get(eventDecorator.getClass())
-              .getSupertype(EventDecorator.class)
-              .getType();
-          Type[] typeArgs = type.getActualTypeArguments();
-
-          // Does the decorator accept the annotation that we're currently looking at?
-          if (TypeLiteral.get(typeArgs[0]).getRawType()
-              .isAssignableFrom(annotation.annotationType())) {
-            // Determine the Event type that the decorator wants
-            Class<? extends Event> expectedEventType =
-                TypeLiteral.get(typeArgs[1]).getRawType().asSubclass(Event.class);
-            // Cast or extract the desired event facet
-            Event desiredFacet = BaseCompositeEvent.asEventFacet(expectedEventType, event);
-            if (desiredFacet == null) {
-              continue;
-            }
-            // Create the context, set the contextual data, and wrap
-            DecoratorContext ctx = decoratorContexts.get();
-            ctx.configure(annotation, desiredFacet, toInvoke);
-            toInvoke = eventDecorator.wrap(ctx);
-
-            // If the decorator has nullified the work, don't do anything else
-            if (toInvoke == null || ctx.wasDispatched()) {
-              break;
-            }
-          }
-        } finally {
-          decoratorScope.exit();
-        }
-      }
-
-      if (toInvoke != null) {
-        try {
-          toInvoke.call();
-          for (Event deferred : work.getDeferredEvents()) {
-            dispatch.fire(deferred);
-          }
-        } catch (Exception e) {
-          logger.error("Unhandled exception while dispatching event", e);
-        }
-      }
-
+    // If this is an instance target without an instance, don't do any work
+    if (instanceProvider != null && instance == null) {
       return results.get();
-    } finally {
-      decoratorScope.exit();
-      receiverScope.exit();
     }
+
+    work.configure(method, instance, methodArgumentProviders);
+
+    Callable<Object> toInvoke = work;
+    for (DecoratorInfo info : decoratorMap.getDecoratorInfo(method)) {
+      Annotation annotation = info.getAnnotation();
+      decoratorScope.enter();
+      try {
+        EventDecorator<Annotation, Event> eventDecorator = info.getProvider().get();
+        /*
+         * If the decorator can't receive the event, just drop it. This allows decorators that are
+         * specific to a certain event subtype to be applied to a receiver method that accepts a
+         * wider event type.
+         */
+        ParameterizedType type = (ParameterizedType) TypeLiteral.get(eventDecorator.getClass())
+            .getSupertype(EventDecorator.class)
+            .getType();
+        Type[] typeArgs = type.getActualTypeArguments();
+
+        // Does the decorator accept the annotation that we're currently looking at?
+        if (TypeLiteral.get(typeArgs[0]).getRawType()
+            .isAssignableFrom(annotation.annotationType())) {
+          // Determine the Event type that the decorator wants
+          Class<? extends Event> expectedEventType =
+              TypeLiteral.get(typeArgs[1]).getRawType().asSubclass(Event.class);
+          // Cast or extract the desired event facet
+          Event desiredFacet = BaseCompositeEvent.asEventFacet(expectedEventType, event);
+          if (desiredFacet == null) {
+            continue;
+          }
+          // Create the context, set the contextual data, and wrap
+          DecoratorContext ctx = decoratorContexts.get();
+          ctx.configure(annotation, desiredFacet, toInvoke);
+          toInvoke = eventDecorator.wrap(ctx);
+
+          // If the decorator has nullified the work, don't do anything else
+          if (toInvoke == null || ctx.wasDispatched()) {
+            break;
+          }
+        }
+      } finally {
+        decoratorScope.exit();
+      }
+    }
+
+    if (toInvoke != null) {
+      try {
+        toInvoke.call();
+        for (Event deferred : work.getDeferredEvents()) {
+          dispatch.fire(deferred);
+        }
+      } catch (Exception e) {
+        logger.error("Unhandled exception while dispatching event", e);
+      }
+    }
+
+    return results.get();
   }
 
   @Override
@@ -257,28 +255,6 @@ public class ReceiverTargetImpl implements ReceiverTarget {
     }
     sb.append(")");
     return sb.toString();
-  }
-
-  @Inject
-  void inject(
-      Provider<DecoratorContext> decoratorContexts,
-      DecoratorMap decoratorMap,
-      DecoratorScope decoratorScope,
-      EventDispatch dispatch,
-      ReceiverScope eventScope,
-      Injector injector,
-      @EventLogger Logger logger,
-      Provider<DispatchResult> results,
-      Provider<ReceiverMethodInvocation> works) {
-    this.decoratorContexts = decoratorContexts;
-    this.decoratorMap = decoratorMap;
-    this.decoratorScope = decoratorScope;
-    this.dispatch = dispatch;
-    this.receiverScope = eventScope;
-    this.injector = injector;
-    this.logger = logger;
-    this.results = results;
-    this.works = works;
   }
 
   /**

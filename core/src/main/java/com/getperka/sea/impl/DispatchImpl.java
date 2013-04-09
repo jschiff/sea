@@ -34,19 +34,30 @@ import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.Registration;
 import com.getperka.sea.ext.EventContext;
+import com.getperka.sea.ext.SuspendedEvent;
 import com.getperka.sea.inject.EventExecutor;
 import com.google.inject.Injector;
 
 @Singleton
 public class DispatchImpl implements EventDispatch, HasInjector {
 
+  @Inject
   private BindingMap bindingMap;
   private final AtomicLong count = new AtomicLong();
+  @Inject
+  private Provider<ReceiverMethodInvocation> currentInvocation;
+  @Inject
   private DecoratorMap decoratorMap;
+  @Inject
   private Injector injector;
+  @Inject
   private InvocationManager invocationManager;
+  @Inject
   private ObserverMap observers;
+  @Inject
   private DispatchMap map;
+  @EventExecutor
+  @Inject
   private ExecutorService service;
   private AtomicBoolean shutdown = new AtomicBoolean();
 
@@ -81,12 +92,17 @@ public class DispatchImpl implements EventDispatch, HasInjector {
       public Object getUserObject() {
         return userObject;
       }
+
+      @Override
+      public SuspendedEvent suspend() {
+        return currentInvocation.get().suspend();
+      }
     };
     if (!observers.shouldFire(event, context)) {
       return;
     }
-    List<Invocation> allInvocation = invocationManager.getInvocations(event, context);
-    for (Invocation invocation : allInvocation) {
+    List<ReceiverStackInvocation> allInvocation = invocationManager.getInvocations(event, context);
+    for (ReceiverStackInvocation invocation : allInvocation) {
       if (invocation.isSynchronous()) {
         // Invocation.call() shouldn't generally throw exceptions unless things are very broken
         invocation.call();
@@ -132,18 +148,5 @@ public class DispatchImpl implements EventDispatch, HasInjector {
       setDraining(true);
       observers.shutdown();
     }
-  }
-
-  @Inject
-  void inject(BindingMap bindingMap, DecoratorMap decoratorMap, Injector injector,
-      InvocationManager invocationManager, DispatchMap map, ObserverMap observerMap,
-      @EventExecutor ExecutorService service) {
-    this.bindingMap = bindingMap;
-    this.decoratorMap = decoratorMap;
-    this.injector = injector;
-    this.invocationManager = invocationManager;
-    this.map = map;
-    this.observers = observerMap;
-    this.service = service;
   }
 }

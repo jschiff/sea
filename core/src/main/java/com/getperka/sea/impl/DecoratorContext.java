@@ -120,6 +120,11 @@ public class DecoratorContext implements EventDecorator.Context<Annotation, Even
   }
 
   @Override
+  public boolean wasSuspended() {
+    return invocation.getWasSuspended();
+  }
+
+  @Override
   public Throwable wasThrown() {
     return invocation.getWasThrown();
   }

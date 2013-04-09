@@ -35,6 +35,7 @@ import javax.inject.Provider;
 import org.slf4j.Logger;
 
 import com.getperka.sea.Event;
+import com.getperka.sea.ext.SuspendedEvent;
 import com.getperka.sea.inject.EventLogger;
 import com.getperka.sea.inject.ReceiverScoped;
 
@@ -45,13 +46,18 @@ import com.getperka.sea.inject.ReceiverScoped;
 public class ReceiverMethodInvocation implements Callable<Object> {
   private final Queue<Event> deferredEvents = new ConcurrentLinkedQueue<Event>();
   private Object instance;
+  @Inject
+  private ReceiverStackInvocation invocation;
   @EventLogger
   @Inject
   private Logger logger;
   private Method method;
   private List<Provider<?>> methodArgumentProviders;
+  @Inject
+  private Provider<SuspendedEvent> suspendedEvents;
   private final AtomicBoolean wasDispatched = new AtomicBoolean();
   private final AtomicReference<Object> wasReturned = new AtomicReference<Object>();
+  private final AtomicBoolean wasSuspended = new AtomicBoolean();
   private final AtomicReference<Throwable> wasThrown = new AtomicReference<Throwable>();
 
   /**
@@ -110,6 +116,10 @@ public class ReceiverMethodInvocation implements Callable<Object> {
     return wasReturned.get();
   }
 
+  public boolean getWasSuspended() {
+    return wasSuspended.get();
+  }
+
   public Throwable getWasThrown() {
     return wasThrown.get();
   }
@@ -117,5 +127,10 @@ public class ReceiverMethodInvocation implements Callable<Object> {
   public void shortCircuit(Throwable t) {
     wasDispatched.set(true);
     wasThrown.set(t);
+  }
+
+  public SuspendedEvent suspend() {
+    wasSuspended.set(true);
+    return suspendedEvents.get();
   }
 }

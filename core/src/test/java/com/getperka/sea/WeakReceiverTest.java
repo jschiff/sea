@@ -19,7 +19,7 @@ package com.getperka.sea;
  * limitations under the License.
  * #L%
  */
-
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -27,15 +27,17 @@ import static org.junit.Assume.assumeTrue;
 
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
 
 import com.getperka.sea.ext.DispatchCompleteEvent;
-import com.getperka.sea.ext.DispatchResult;
-import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.ReceiverTarget;
+import com.getperka.sea.impl.HasInjector;
+import com.getperka.sea.impl.ReceiverStackInvocation;
+import com.getperka.sea.impl.InvocationManager;
 import com.getperka.sea.util.EventLatch;
 
 public class WeakReceiverTest {
@@ -81,18 +83,10 @@ public class WeakReceiverTest {
     // Shouldn't see anything happen
     assertFalse(evt.actedUpon);
 
-    // Check that the target doesn't explode if re-dispatched with a dead reference
-    DispatchResult res = receiverTarget.get().dispatch(new MyEvent(), new EventContext() {
-      @Override
-      public long getSequenceNumber() {
-        return 0;
-      }
-
-      @Override
-      public Object getUserObject() {
-        return null;
-      }
-    });
-    assertFalse(res.wasReceived());
+    // Check the plumbing to make sure that an Invocation isn't created for a dead receiver
+    InvocationManager manager = ((HasInjector) dispatch).getInjector()
+        .getInstance(InvocationManager.class);
+    List<ReceiverStackInvocation> invocations = manager.getInvocations(new MyEvent(), null);
+    assertEquals(0, invocations.size());
   }
 }

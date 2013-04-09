@@ -74,4 +74,9 @@ public class DispatchResultImpl implements DispatchResult {
   public boolean wasReceived() {
     return invocation.getWasDispatched();
   }
+
+  @Override
+  public boolean wasSuspended() {
+    return invocation.getWasSuspended();
+  }
 }

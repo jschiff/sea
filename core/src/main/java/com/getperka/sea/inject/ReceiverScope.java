@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.ReceiverTarget;
+import com.getperka.sea.impl.ReceiverStackInvocation;
 import com.google.inject.Key;
 import com.google.inject.OutOfScopeException;
 import com.google.inject.Provider;
@@ -41,15 +42,19 @@ public class ReceiverScope extends BaseScope {
   private static class Frame {
     final Map<Key<?>, Object> values = new ConcurrentHashMap<Key<?>, Object>();
 
-    Frame(Event event, ReceiverTarget receiverTarget, EventContext context) {
+    Frame(ReceiverStackInvocation invocation, Event event, ReceiverTarget receiverTarget,
+        EventContext context) {
       values.put(currentEventKey, event);
       values.put(eventContextKey, context);
+      values.put(invocationKey, invocation);
       values.put(receiverTargetKey, receiverTarget);
     }
   }
 
   private static final Key<Event> currentEventKey = Key.get(Event.class, CurrentEvent.class);
   private static final Key<EventContext> eventContextKey = Key.get(EventContext.class);
+  private static final Key<ReceiverStackInvocation> invocationKey =
+      Key.get(ReceiverStackInvocation.class);
   private static final Key<ReceiverTarget> receiverTargetKey = Key.get(ReceiverTarget.class);
 
   private final ThreadLocal<Deque<Frame>> frameStack = new ThreadLocal<Deque<Frame>>() {
@@ -59,8 +64,9 @@ public class ReceiverScope extends BaseScope {
     }
   };
 
-  public void enter(Event event, ReceiverTarget receiverTarget, EventContext context) {
-    Frame frame = new Frame(event, receiverTarget, context);
+  public void enter(ReceiverStackInvocation invocation, Event event, ReceiverTarget receiverTarget,
+      EventContext context) {
+    Frame frame = new Frame(invocation, event, receiverTarget, context);
     frameStack.get().push(frame);
   }
 

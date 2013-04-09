@@ -33,8 +33,11 @@ import com.getperka.sea.EventDispatch;
 import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.ReceiverTarget;
+import com.getperka.sea.ext.SuspendedEvent;
 import com.getperka.sea.impl.DispatchImpl;
 import com.getperka.sea.impl.DispatchResultImpl;
+import com.getperka.sea.impl.ReceiverStackInvocation;
+import com.getperka.sea.impl.SuspendedEventImpl;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
@@ -56,8 +59,8 @@ public class EventModule extends AbstractModule {
     bindDecoratorScope();
 
     bind(DispatchResult.class).to(DispatchResultImpl.class);
-
     bind(EventDispatch.class).to(DispatchImpl.class);
+    bind(SuspendedEvent.class).to(SuspendedEventImpl.class);
   }
 
   /**
@@ -101,6 +104,9 @@ public class EventModule extends AbstractModule {
         .in(scope);
     bind(EventContext.class)
         .toProvider(scope.<EventContext> provider())
+        .in(scope);
+    bind(ReceiverStackInvocation.class)
+        .toProvider(scope.<ReceiverStackInvocation> provider())
         .in(scope);
     bind(ReceiverTarget.class)
         .toProvider(scope.<ReceiverTarget> provider())
