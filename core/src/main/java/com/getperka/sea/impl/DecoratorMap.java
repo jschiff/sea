@@ -26,6 +26,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -163,6 +164,26 @@ public class DecoratorMap {
     toReturn.addAll(compute(method.getDeclaringClass()));
     toReturn.addAll(compute(method.getDeclaringClass().getPackage()));
     toReturn.addAll(globalDecorators);
+
+    /*
+     * If the same decorator annotation has been applied multiple times, use the global-most
+     * ordering, but the receiver-most annotation value. This allows global defaults to be set that
+     * can be overridden on a per-receiver basis.
+     */
+    Map<Class<?>, DecoratorInfo> infoByAnnotationType =
+        new LinkedHashMap<Class<?>, DecoratorMap.DecoratorInfo>();
+
+    for (DecoratorInfo info : toReturn) {
+      Class<?> annotationType = info.annotation.annotationType();
+      // Move any existing info to the back of the line
+      DecoratorInfo previous = infoByAnnotationType.remove(annotationType);
+      if (previous != null) {
+        info = previous;
+      }
+      infoByAnnotationType.put(annotationType, info);
+    }
+
+    toReturn = new ArrayList<DecoratorInfo>(infoByAnnotationType.values());
 
     return toReturn;
   }
