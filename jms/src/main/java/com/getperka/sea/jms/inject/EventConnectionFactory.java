@@ -1,4 +1,5 @@
 package com.getperka.sea.jms.inject;
+
 /*
  * #%L
  * Simple Event Architecture - JMS Support
@@ -28,10 +29,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.google.inject.BindingAnnotation;
+import javax.inject.Qualifier;
 
-@BindingAnnotation
 @Documented
+@Qualifier
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ FIELD, PARAMETER, METHOD })
 public @interface EventConnectionFactory {}

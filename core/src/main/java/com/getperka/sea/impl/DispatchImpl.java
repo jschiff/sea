@@ -113,8 +113,13 @@ public class DispatchImpl implements EventDispatch, HasInjector {
   }
 
   @Override
-  public Injector getInjector() {
-    return injector;
+  public <T> T getInstance(Class<T> clazz) {
+    return injector.getInstance(clazz);
+  }
+
+  @Override
+  public <T> Provider<T> getProvider(Class<T> clazz) {
+    return injector.getProvider(clazz);
   }
 
   @Override

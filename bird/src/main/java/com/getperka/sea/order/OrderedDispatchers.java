@@ -1,4 +1,5 @@
 package com.getperka.sea.order;
+
 /*
  * #%L
  * Simple Event Architecture
@@ -30,7 +31,7 @@ public class OrderedDispatchers {
    * Instantiates a new {@link OrderedDispatch} for a specific {@link EventDispatch}.
    */
   public static OrderedDispatch create(EventDispatch dispatch) {
-    return ((HasInjector) dispatch).getInjector().getInstance(OrderedDispatch.class);
+    return ((HasInjector) dispatch).getInstance(OrderedDispatch.class);
   }
 
   private OrderedDispatchers() {}

@@ -39,7 +39,6 @@ import com.getperka.sea.TestConstants;
 import com.getperka.sea.impl.HasInjector;
 import com.google.inject.ProvisionException;
 
-
 /**
  * Verify that placing an {@link ReceiverScoped} annotation on a type results in single instance per
  * event dispatch.
@@ -91,11 +90,11 @@ public class ReceiverScopeTest {
 
     // Try some other incorrect uses
     try {
-      ((HasInjector) dispatch).getInjector().getInstance(IsEventScoped.class);
+      ((HasInjector) dispatch).getInstance(IsEventScoped.class);
       fail();
     } catch (ProvisionException expected) {}
     try {
-      ((HasInjector) dispatch).getInjector().getProvider(IsEventScoped.class).get();
+      ((HasInjector) dispatch).getProvider(IsEventScoped.class).get();
       fail();
     } catch (ProvisionException expected) {}
   }

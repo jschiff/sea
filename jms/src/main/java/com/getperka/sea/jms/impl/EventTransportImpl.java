@@ -30,15 +30,15 @@ import javax.jms.Session;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.EventContext;
+import com.getperka.sea.impl.HasInjector;
 import com.getperka.sea.jms.EventTransport;
 import com.getperka.sea.jms.EventTransportException;
 import com.getperka.sea.jms.MessageEvent;
 import com.getperka.sea.jms.inject.EventSession;
-import com.google.inject.Injector;
 
 public class EventTransportImpl implements EventTransport {
 
-  private Injector injector;
+  private HasInjector injector;
   private Session session;
 
   protected EventTransportImpl() {}
@@ -99,7 +99,7 @@ public class EventTransportImpl implements EventTransport {
   }
 
   @Inject
-  void inject(Injector injector, @EventSession Session session) {
+  void inject(HasInjector injector, @EventSession Session session) {
     this.injector = injector;
     this.session = session;
   }

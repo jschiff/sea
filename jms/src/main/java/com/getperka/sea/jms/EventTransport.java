@@ -26,15 +26,12 @@ import javax.jms.Message;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.EventContext;
-import com.getperka.sea.jms.impl.EventTransportImpl;
-import com.google.inject.ImplementedBy;
 
 /**
  * Defines how {@link Event} instances should be transformed to and from {@link Message} instances.
  * The default implementation of EventTransport support types that implements {@link Serializable}
  * or {@link MessageEvent}.
  */
-@ImplementedBy(EventTransportImpl.class)
 public interface EventTransport {
   /**
    * Return {@code true} if the given event can can be transported by the implementation.

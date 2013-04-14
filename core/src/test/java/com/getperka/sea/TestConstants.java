@@ -21,5 +21,5 @@ package com.getperka.sea;
  */
 
 public class TestConstants {
-  public static final int testDelay = 1000;
+  public static final int testDelay = 5000;
 }

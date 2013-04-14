@@ -20,11 +20,16 @@ package com.getperka.sea.impl;
  * #L%
  */
 
+import javax.inject.Provider;
+
 import com.google.inject.Injector;
 
 /**
- * Internal plumbing interface that allows access to the {@link Injector}.
+ * Internal plumbing interface that allows access to the {@link Injector} without having to actually
+ * expose it.
  */
 public interface HasInjector {
-  Injector getInjector();
+  <T> T getInstance(Class<T> clazz);
+
+  <T> Provider<T> getProvider(Class<T> clazz);
 }

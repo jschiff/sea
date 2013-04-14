@@ -27,6 +27,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -34,17 +35,14 @@ import org.junit.Test;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.EventDispatchers;
-import com.getperka.sea.decoration.Failure;
-import com.getperka.sea.decoration.Logged;
-import com.getperka.sea.decoration.Success;
-import com.getperka.sea.decoration.Timed;
 import com.getperka.sea.ext.DecoratorOrder;
+import com.getperka.sea.ext.EventDecorator;
+import com.getperka.sea.ext.EventDecoratorBinding;
 import com.getperka.sea.ext.EventObserver;
 import com.getperka.sea.ext.EventObserverBinding;
 import com.getperka.sea.impl.DecoratorMap.DecoratorInfo;
 
 public class DecoratorOrderTest {
-
   @Logged
   @Timed(value = 1)
   @ObserverA
@@ -82,6 +80,21 @@ public class DecoratorOrderTest {
   @DecoratorOrder({ Timed.class, Logged.class, Failure.class })
   interface E {}
 
+  @Retention(RetentionPolicy.RUNTIME)
+  @EventDecoratorBinding(MyDecorator.class)
+  @interface Failure {}
+
+  @Retention(RetentionPolicy.RUNTIME)
+  @EventDecoratorBinding(MyDecorator.class)
+  @interface Logged {}
+
+  static class MyDecorator implements EventDecorator<Annotation, Event> {
+    @Override
+    public Callable<Object> wrap(EventDecorator.Context<Annotation, Event> ctx) {
+      return ctx.getWork();
+    }
+  }
+
   static class MyObserver implements EventObserver<Annotation, Event> {
     @Override
     public void initialize(Annotation annotation) {}
@@ -101,6 +114,16 @@ public class DecoratorOrderTest {
   @EventObserverBinding(MyObserver.class)
   @interface ObserverB {}
 
+  @Retention(RetentionPolicy.RUNTIME)
+  @EventDecoratorBinding(MyDecorator.class)
+  @interface Success {}
+
+  @Retention(RetentionPolicy.RUNTIME)
+  @EventDecoratorBinding(MyDecorator.class)
+  @interface Timed {
+    int value();
+  }
+
   private EventDispatch dispatch;
   private DecoratorMap map;
   private Method method;
@@ -109,9 +132,9 @@ public class DecoratorOrderTest {
   @Before
   public void before() throws NoSuchMethodException {
     dispatch = EventDispatchers.create();
-    map = ((HasInjector) dispatch).getInjector().getInstance(DecoratorMap.class);
+    map = ((HasInjector) dispatch).getInstance(DecoratorMap.class);
     method = getClass().getDeclaredMethod("dummy");
-    observers = ((HasInjector) dispatch).getInjector().getInstance(ObserverMap.class);
+    observers = ((HasInjector) dispatch).getInstance(ObserverMap.class);
   }
 
   @Test

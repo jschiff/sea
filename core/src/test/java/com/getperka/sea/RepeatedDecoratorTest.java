@@ -32,8 +32,8 @@ import java.util.concurrent.SynchronousQueue;
 
 import org.junit.Test;
 
+import com.getperka.sea.RepeatedDecoratorTest.Logged;
 import com.getperka.sea.RepeatedDecoratorTest.Repeated;
-import com.getperka.sea.decoration.Logged;
 import com.getperka.sea.ext.DecoratorOrder;
 import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.EventDecoratorBinding;
@@ -48,6 +48,10 @@ import com.getperka.sea.impl.HasInjector;
 @Repeated(value = "outer")
 @DecoratorOrder({ Logged.class, Repeated.class })
 public class RepeatedDecoratorTest {
+
+  @EventDecoratorBinding(RepeatedDecorator.class)
+  @Retention(RetentionPolicy.RUNTIME)
+  @interface Logged {}
 
   static class MyEvent implements Event {
     String value;
@@ -100,7 +104,7 @@ public class RepeatedDecoratorTest {
     EventDispatch dispatch = EventDispatchers.create();
     dispatch.addGlobalDecorator(getClass());
 
-    DecoratorMap map = ((HasInjector) dispatch).getInjector().getInstance(DecoratorMap.class);
+    DecoratorMap map = ((HasInjector) dispatch).getInstance(DecoratorMap.class);
 
     Method method = MyReceiver.class.getDeclaredMethod("receive", MyEvent.class);
     List<DecoratorInfo> info = map.getDecoratorInfo(method);

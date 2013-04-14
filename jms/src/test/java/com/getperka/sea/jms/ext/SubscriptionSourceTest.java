@@ -54,8 +54,7 @@ public class SubscriptionSourceTest extends JmsTestBase {
   public void test() {
     eventDispatch.addGlobalDecorator(getClass());
 
-    EventSubscriber subscriber = ((HasInjector) eventDispatch).getInjector()
-        .getInstance(EventSubscriber.class);
+    EventSubscriber subscriber = ((HasInjector) eventDispatch).getInstance(EventSubscriber.class);
     assertTrue(subscriber.isSubscribed(MyEvent.class));
   }
 }

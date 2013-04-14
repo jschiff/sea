@@ -36,8 +36,8 @@ import org.junit.Test;
 import com.getperka.sea.ext.DispatchCompleteEvent;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.impl.HasInjector;
-import com.getperka.sea.impl.ReceiverStackInvocation;
 import com.getperka.sea.impl.InvocationManager;
+import com.getperka.sea.impl.ReceiverStackInvocation;
 import com.getperka.sea.util.EventLatch;
 
 public class WeakReceiverTest {
@@ -84,8 +84,7 @@ public class WeakReceiverTest {
     assertFalse(evt.actedUpon);
 
     // Check the plumbing to make sure that an Invocation isn't created for a dead receiver
-    InvocationManager manager = ((HasInjector) dispatch).getInjector()
-        .getInstance(InvocationManager.class);
+    InvocationManager manager = ((HasInjector) dispatch).getInstance(InvocationManager.class);
     List<ReceiverStackInvocation> invocations = manager.getInvocations(new MyEvent(), null);
     assertEquals(0, invocations.size());
   }

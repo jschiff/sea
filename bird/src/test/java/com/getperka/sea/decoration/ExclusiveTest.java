@@ -82,7 +82,7 @@ public class ExclusiveTest {
 
   @Test(timeout = TestConstants.testDelay)
   public void test() {
-    filter = ((HasInjector) dispatch).getInjector().getInstance(ExclusiveFilter.class);
+    filter = ((HasInjector) dispatch).getInstance(ExclusiveFilter.class);
 
     SleepyReceiver a = new SleepyReceiver("a");
     SleepyReceiver b = new SleepyReceiver("b");

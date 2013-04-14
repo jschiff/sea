@@ -34,10 +34,10 @@ import com.getperka.sea.ext.ReceiverTarget;
 class Decorator implements EventDecorator<Ordered, Event> {
 
   private final EventDispatch dispatch;
-  private final OrderedDispatchImpl impl;
+  private final OrderedDispatch impl;
 
   @Inject
-  Decorator(EventDispatch dispatch, OrderedDispatchImpl impl) {
+  Decorator(EventDispatch dispatch, OrderedDispatch impl) {
     this.dispatch = dispatch;
     this.impl = impl;
   }

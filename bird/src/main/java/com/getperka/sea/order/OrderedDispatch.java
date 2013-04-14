@@ -31,8 +31,16 @@ import javax.inject.Singleton;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 
+/**
+ * Applies a strict order to a collection of events when dispatching to their receivers. The
+ * receivers must be annotated with {@link Ordered}.
+ * <p>
+ * Instances of this class can be automatically injected into receiver instances created by
+ * {@link EventDispatch}, or the {@link OrderedDispatchers#create(EventDispatch)} method may be
+ * used.
+ */
 @Singleton
-class OrderedDispatchImpl implements OrderedDispatch {
+public class OrderedDispatch {
   /**
    * Used for propagating the "next" event after an ordered event is successfully dispatched.
    */
@@ -44,11 +52,10 @@ class OrderedDispatchImpl implements OrderedDispatch {
       Collections.synchronizedMap(new WeakHashMap<Event, BatchState>());
 
   @Inject
-  OrderedDispatchImpl(EventDispatch dispatch) {
+  OrderedDispatch(EventDispatch dispatch) {
     this.dispatch = dispatch;
   }
 
-  @Override
   public void fire(Collection<? extends Event> events) {
     // Create a new ordered collection
     BatchState batchState = new BatchState(events);

@@ -32,6 +32,13 @@ import com.google.inject.util.Modules;
  */
 public class EventDispatchers {
   /**
+   * Instantiates a new {@link EventDispatch} instance.
+   */
+  public static EventDispatch create() {
+    return Guice.createInjector(new EventModule()).getInstance(EventDispatch.class);
+  }
+
+  /**
    * Instantiates a new {@link EventDispatch} instance that uses the provided
    * {@link ExecutorService} for scheduling executions.
    */

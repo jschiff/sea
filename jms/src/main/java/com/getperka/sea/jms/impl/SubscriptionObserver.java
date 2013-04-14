@@ -30,12 +30,12 @@ import javax.inject.Singleton;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.EventObserver;
+import com.getperka.sea.impl.HasInjector;
 import com.getperka.sea.jms.EventSubscriberException;
 import com.getperka.sea.jms.RoutingMode;
 import com.getperka.sea.jms.SubscriptionOptions;
 import com.getperka.sea.jms.Subscriptions;
 import com.getperka.sea.jms.ext.SubscriptionSource;
-import com.google.inject.Injector;
 
 /**
  * Intercepts events from the local EventDispatch and forwards them to the JMS subscription logic.
@@ -43,7 +43,7 @@ import com.google.inject.Injector;
 @Singleton
 public class SubscriptionObserver implements EventObserver<Subscriptions, Event> {
 
-  private Injector injector;
+  private HasInjector injector;
   private ConcurrentMap<Class<? extends Event>, Boolean> shouldSuppress =
       new ConcurrentHashMap<Class<? extends Event>, Boolean>();
   private EventSubscriber subscriber;
@@ -106,7 +106,7 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
   }
 
   @Inject
-  void inject(Injector injector, EventSubscriber subscriber) {
+  void inject(HasInjector injector, EventSubscriber subscriber) {
     this.injector = injector;
     this.subscriber = subscriber;
   }

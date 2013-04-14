@@ -43,19 +43,15 @@ import javax.inject.Inject;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.getperka.sea.decoration.Logged;
-import com.getperka.sea.decoration.Logged.Level;
 import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.EventDecoratorBinding;
 
-@Logged
 public class EventSmokeTest {
 
   static class BuggyReceiver {
-    @Logged(level = Level.INFO, value = "The following exception is expected")
     @Receiver
     void receive(Event e) {
-      throw new RuntimeException("Should not prevent work from succeeding");
+      throw new RuntimeException("EXPECTED: Should not prevent work from succeeding");
     }
   }
 

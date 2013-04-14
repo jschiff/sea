@@ -26,7 +26,9 @@ import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
 import javax.jms.Session;
 
+import com.getperka.sea.jms.EventTransport;
 import com.getperka.sea.jms.impl.EventSubscriber;
+import com.getperka.sea.jms.impl.EventTransportImpl;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 
@@ -35,6 +37,7 @@ public class JmsEventModule extends AbstractModule {
   @Override
   protected void configure() {
     bind(EventSubscriber.class);
+    bind(EventTransport.class).to(EventTransportImpl.class);
   }
 
   @EventConnection
