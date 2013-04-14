@@ -27,6 +27,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.inject.Singleton;
 
+import com.getperka.sea.ext.ConfigurationProvider;
+import com.getperka.sea.ext.ConfigurationVisitor;
 import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.EventDecoratorBinding;
 import com.getperka.sea.ext.EventObserver;
@@ -38,7 +40,7 @@ import com.getperka.sea.ext.ExternalBindings;
  * Manages bindings from annotations to their respective decorators and observers.
  */
 @Singleton
-public class BindingMap {
+public class BindingMap implements ConfigurationProvider {
 
   private final Map<Class<? extends Annotation>, Class<? extends EventDecorator<?, ?>>> decorators =
       new ConcurrentHashMap<Class<? extends Annotation>, Class<? extends EventDecorator<?, ?>>>();
@@ -47,6 +49,18 @@ public class BindingMap {
       new ConcurrentHashMap<Class<? extends Annotation>, Class<? extends EventObserver<?, ?>>>();
 
   protected BindingMap() {}
+
+  @Override
+  public void accept(ConfigurationVisitor visitor) {
+    for (Map.Entry<Class<? extends Annotation>, Class<? extends EventDecorator<?, ?>>> entry : decorators
+        .entrySet()) {
+      visitor.decoratorBinding(entry.getKey(), entry.getValue());
+    }
+    for (Map.Entry<Class<? extends Annotation>, Class<? extends EventObserver<?, ?>>> entry : observers
+        .entrySet()) {
+      visitor.observerBinding(entry.getKey(), entry.getValue());
+    }
+  }
 
   /**
    * Retrieve the {@link EventDecorator} type that should be created for the given annotation, or

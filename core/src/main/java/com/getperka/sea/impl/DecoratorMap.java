@@ -44,7 +44,7 @@ import com.getperka.sea.ext.EventDecorator;
 import com.google.inject.Injector;
 
 /**
- * Holds global bindings and calculates the decorators that should be used when dispatching events.
+ * Calculates the decorators that should be used when dispatching events.
  */
 @Singleton
 public class DecoratorMap {

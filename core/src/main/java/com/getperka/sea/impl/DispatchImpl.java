@@ -33,6 +33,7 @@ import javax.inject.Singleton;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.Registration;
+import com.getperka.sea.ext.ConfigurationVisitor;
 import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.SuspendedEvent;
 import com.getperka.sea.inject.EventExecutor;
@@ -49,19 +50,28 @@ public class DispatchImpl implements EventDispatch, HasInjector {
   @Inject
   private DecoratorMap decoratorMap;
   @Inject
+  private DispatchMap dispatchMap;
+  @Inject
   private Injector injector;
   @Inject
   private InvocationManager invocationManager;
   @Inject
   private ObserverMap observers;
-  @Inject
-  private DispatchMap map;
   @EventExecutor
   @Inject
   private ExecutorService service;
   private AtomicBoolean shutdown = new AtomicBoolean();
 
   protected DispatchImpl() {}
+
+  @Override
+  public void accept(ConfigurationVisitor visitor) {
+    visitor.eventDispatch(this);
+    bindingMap.accept(visitor);
+    dispatchMap.accept(visitor);
+    observers.accept(visitor);
+    dispatchMap.accept(visitor);
+  }
 
   @Override
   public void addGlobalDecorator(AnnotatedElement element) {
@@ -129,17 +139,17 @@ public class DispatchImpl implements EventDispatch, HasInjector {
 
   @Override
   public <T> Registration register(Class<T> receiver, Provider<? extends T> provider) {
-    return map.register(receiver, provider);
+    return dispatchMap.register(receiver, provider);
   }
 
   @Override
   public Registration register(Object receiver) {
-    return map.register(receiver);
+    return dispatchMap.register(receiver);
   }
 
   @Override
   public Registration registerWeakly(Object receiver) {
-    return map.registerWeakly(receiver);
+    return dispatchMap.registerWeakly(receiver);
   }
 
   @Override

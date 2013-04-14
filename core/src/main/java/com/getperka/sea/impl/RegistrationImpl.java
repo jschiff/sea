@@ -36,11 +36,13 @@ import org.slf4j.Logger;
 import com.getperka.sea.Event;
 import com.getperka.sea.Receiver;
 import com.getperka.sea.Registration;
+import com.getperka.sea.ext.ConfigurationProvider;
+import com.getperka.sea.ext.ConfigurationVisitor;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.getperka.sea.inject.EventLogger;
 import com.google.inject.Injector;
 
-public class RegistrationImpl implements Registration {
+public class RegistrationImpl implements ConfigurationProvider, Registration {
   private DispatchMap dispatchMap;
   private Provider<ReceiverTargetImpl> dispatchTargets;
   private Injector injector;
@@ -48,6 +50,15 @@ public class RegistrationImpl implements Registration {
   private Map<Class<? extends Event>, List<ReceiverTarget>> targets = Collections.emptyMap();
 
   protected RegistrationImpl() {}
+
+  @Override
+  public void accept(ConfigurationVisitor visitor) {
+    for (List<ReceiverTarget> list : targets.values()) {
+      for (ReceiverTarget target : list) {
+        ((ConfigurationProvider) target).accept(visitor);
+      }
+    }
+  }
 
   @Override
   public void cancel() {

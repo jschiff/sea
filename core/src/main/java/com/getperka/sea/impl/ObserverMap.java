@@ -37,6 +37,8 @@ import javax.inject.Singleton;
 import com.getperka.sea.BaseCompositeEvent;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
+import com.getperka.sea.ext.ConfigurationProvider;
+import com.getperka.sea.ext.ConfigurationVisitor;
 import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.EventObserver;
 import com.google.inject.Injector;
@@ -46,7 +48,7 @@ import com.google.inject.TypeLiteral;
  * Responsible for tracking all {@link EventObserver} mappings.
  */
 @Singleton
-public class ObserverMap {
+public class ObserverMap implements ConfigurationProvider {
   static class ObserverRegistration {
     final Annotation annotation;
     final Class<? extends Event> desiredEventType;
@@ -89,6 +91,16 @@ public class ObserverMap {
       new CopyOnWriteArrayList<ObserverMap.ObserverRegistration>();
 
   protected ObserverMap() {}
+
+  @Override
+  public void accept(ConfigurationVisitor visitor) {
+    for (ObserverRegistration reg : registrations) {
+      visitor.observer(reg.annotation, reg.observer);
+      if (reg.observer instanceof ConfigurationProvider) {
+        ((ConfigurationProvider) reg.observer).accept(visitor);
+      }
+    }
+  }
 
   /**
    * Each subsequent registration has higher precedence, to match the behavior of

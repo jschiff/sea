@@ -42,6 +42,8 @@ import javax.inject.Singleton;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.Registration;
+import com.getperka.sea.ext.ConfigurationProvider;
+import com.getperka.sea.ext.ConfigurationVisitor;
 import com.getperka.sea.ext.ReceiverTarget;
 import com.google.inject.util.Providers;
 
@@ -49,7 +51,7 @@ import com.google.inject.util.Providers;
  * Provides routing of {@link Event} objects to {@link ReceiverTarget} instances.
  */
 @Singleton
-public class DispatchMap {
+public class DispatchMap implements ConfigurationProvider {
   private class WeakReceiverReference extends WeakReference<Object> implements Provider<Object> {
     private Registration registration;
 
@@ -82,6 +84,13 @@ public class DispatchMap {
   private final ReferenceQueue<Object> weakReceiverQueue = new ReferenceQueue<Object>();
 
   protected DispatchMap() {}
+
+  @Override
+  public void accept(ConfigurationVisitor visitor) {
+    for (RegistrationImpl registration : registered) {
+      registration.accept(visitor);
+    }
+  }
 
   public void cancel(Registration registration) {
     registered.remove(registration);
