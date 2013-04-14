@@ -26,9 +26,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import javax.inject.Inject;
 
 import com.getperka.sea.ext.SuspendedEvent;
+import com.getperka.sea.inject.CurrentEvent;
 import com.getperka.sea.inject.EventExecutor;
 import com.getperka.sea.inject.ReceiverScoped;
 
+/**
+ * A trivial in-memory implementation of SuspendedEvent that recycles the
+ * {@link ReceiverStackInvocation}. A more sophisticated implementation could be injected that
+ * persists the {@link CurrentEvent} to a storage mechanism.
+ */
 @ReceiverScoped
 public class SuspendedEventImpl implements SuspendedEvent {
   @Inject
