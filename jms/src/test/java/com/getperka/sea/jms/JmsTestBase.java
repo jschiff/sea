@@ -34,6 +34,8 @@ import org.junit.Before;
 
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.EventDispatchers;
+import com.getperka.sea.impl.HasInjector;
+import com.getperka.sea.jms.impl.SubscriptionObserver;
 import com.google.inject.Module;
 
 /**
@@ -56,6 +58,7 @@ public class JmsTestBase {
   @After
   public void after() throws JMSException {
     for (EventDispatch dispatch : eventDispatches) {
+      ((HasInjector) dispatch).getInjector().getInstance(SubscriptionObserver.class).stop();
       dispatch.shutdown();
     }
     testSession.close();
@@ -75,6 +78,7 @@ public class JmsTestBase {
       Module module = EventSubscribers.createModule(connectionFactory, null);
       EventDispatch d = EventDispatchers.create(module);
       d.addGlobalDecorator(getClass());
+      ((HasInjector) d).getInjector().getInstance(SubscriptionObserver.class).start();
 
       eventDispatches.add(d);
       if (i == 0) {

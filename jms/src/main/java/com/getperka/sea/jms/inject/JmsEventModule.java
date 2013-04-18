@@ -43,7 +43,6 @@ public class JmsEventModule extends AbstractModule {
   Connection connection(
       @EventConnectionFactory ConnectionFactory factory) throws JMSException {
     Connection conn = factory.createConnection();
-    conn.start();
     return conn;
   }
 

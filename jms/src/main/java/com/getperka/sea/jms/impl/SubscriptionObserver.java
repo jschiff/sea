@@ -27,14 +27,22 @@ import java.util.concurrent.ConcurrentMap;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import javax.jms.Connection;
+import javax.jms.JMSException;
+import javax.jms.Session;
+
+import org.slf4j.Logger;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.EventObserver;
+import com.getperka.sea.inject.EventLogger;
 import com.getperka.sea.jms.EventSubscriberException;
 import com.getperka.sea.jms.RoutingMode;
 import com.getperka.sea.jms.SubscriptionOptions;
 import com.getperka.sea.jms.Subscriptions;
 import com.getperka.sea.jms.ext.SubscriptionSource;
+import com.getperka.sea.jms.inject.EventConnection;
+import com.getperka.sea.jms.inject.EventSession;
 import com.google.inject.Injector;
 
 /**
@@ -43,10 +51,22 @@ import com.google.inject.Injector;
 @Singleton
 public class SubscriptionObserver implements EventObserver<Subscriptions, Event> {
 
-  private Injector injector;
+  @EventConnection
+  @Inject
+  Connection connection;
+  @Inject
+  Injector injector;
+  @Inject
+  @EventLogger
+  Logger logger;
+  @Inject
+  @EventSession
+  Session session;
+  @Inject
+  EventSubscriber subscriber;
+
   private ConcurrentMap<Class<? extends Event>, Boolean> shouldSuppress =
       new ConcurrentHashMap<Class<? extends Event>, Boolean>();
-  private EventSubscriber subscriber;
 
   protected SubscriptionObserver() {}
 
@@ -103,12 +123,19 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
   @Override
   public void shutdown() {
     subscriber.shutdown();
+    try {
+      session.close();
+    } catch (JMSException e) {
+      logger.error("Could not close JMS session", e);
+    }
   }
 
-  @Inject
-  void inject(Injector injector, EventSubscriber subscriber) {
-    this.injector = injector;
-    this.subscriber = subscriber;
+  public void start() throws JMSException {
+    connection.start();
+  }
+
+  public void stop() throws JMSException {
+    connection.stop();
   }
 
   private boolean shouldSuppress(Class<? extends Event> eventType) {

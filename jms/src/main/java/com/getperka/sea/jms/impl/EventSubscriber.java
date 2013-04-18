@@ -34,11 +34,8 @@ import javax.jms.MessageProducer;
 import javax.jms.Session;
 import javax.jms.Topic;
 
-import org.slf4j.Logger;
-
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.EventContext;
-import com.getperka.sea.inject.EventLogger;
 import com.getperka.sea.jms.EventSubscriberException;
 import com.getperka.sea.jms.EventTransport;
 import com.getperka.sea.jms.ReturnMode;
@@ -54,13 +51,17 @@ import com.getperka.sea.jms.inject.EventSession;
 @Singleton
 public class EventSubscriber {
 
-  private Logger logger;
-  private Session session;
+  @Inject
+  @EventSession
+  Session session;
+  @Inject
+  Provider<EventSubscription> subscriptions;
+  @Inject
+  EventTransport transport;
+
   private final AtomicBoolean shutdown = new AtomicBoolean();
   private final ConcurrentMap<Class<? extends Event>, EventSubscription> subscribed =
       new ConcurrentHashMap<Class<? extends Event>, EventSubscription>();
-  private Provider<EventSubscription> subscriptions;
-  private EventTransport transport;
 
   protected EventSubscriber() {}
 
@@ -80,12 +81,6 @@ public class EventSubscriber {
       subscription.cancel();
     }
     subscribed.clear();
-
-    try {
-      session.close();
-    } catch (JMSException e) {
-      logger.error("Exception while shutting down", e);
-    }
   }
 
   public EventSubscription subscribe(Class<? extends Event> eventType,
@@ -163,15 +158,5 @@ public class EventSubscriber {
     for (EventSubscription subscription : subscribed.values()) {
       subscription.maybeSendToJms(event, context);
     }
-  }
-
-  @Inject
-  void inject(@EventLogger Logger logger,
-      @EventSession Session session, Provider<EventSubscription> subscriptions,
-      EventTransport transport) {
-    this.logger = logger;
-    this.session = session;
-    this.subscriptions = subscriptions;
-    this.transport = transport;
   }
 }

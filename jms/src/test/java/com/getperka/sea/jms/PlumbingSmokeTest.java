@@ -58,7 +58,7 @@ public class PlumbingSmokeTest extends JmsTestBase {
     private static final long serialVersionUID = 1L;
   }
 
-  @Test(timeout = TEST_TIMEOUT * 1000)
+  @Test(timeout = TEST_TIMEOUT)
   public void testQueueEventReceive() throws JMSException, EventSubscriberException,
       InterruptedException {
 
