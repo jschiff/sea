@@ -58,7 +58,8 @@ public class ModeTest extends JmsTestBase {
           subscriptionMode = SubscriptionMode.SEND)))
   interface Sender {}
 
-  @Test(timeout = TEST_TIMEOUT)
+  @Test
+  // (timeout = TEST_TIMEOUT)
   public void test() throws EventSubscriberException, InterruptedException {
     dispatch(0).addGlobalDecorator(Normal.class);
     dispatch(1).addGlobalDecorator(Receiver.class);
@@ -122,16 +123,17 @@ public class ModeTest extends JmsTestBase {
     // Resend event
     normalLatch.reset(0);
     receiveLatch.reset(1);
-    sendLatch.reset(1);
+    sendLatch.reset(0);
     received.data = "Hello world!";
     dispatch(1).fire(received);
 
     // Verify local dispatch
     receiveLatch.await();
     assertSame(received, receiveLatch.getEventQueue().poll());
-    // Verify return-over-JMS behavior
-    sendLatch.await();
-    assertEquals("Hello world!", sendLatch.getEventQueue().poll().data);
+
+    // Sending from a receiving stack shouldn't go out over JMS
+    assertEquals(0, normalLatch.getEventQueue().size());
+    assertEquals(0, sendLatch.getEventQueue().size());
   }
 
   @Override

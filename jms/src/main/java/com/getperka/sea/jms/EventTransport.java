@@ -44,7 +44,7 @@ public interface EventTransport {
   /**
    * Construct an {@link Event} instance from a JMS {@link Message}.
    */
-  <T extends Event> T decode(Class<T> eventType, Message message) throws EventTransportException;
+  Event decode(Message message) throws EventTransportException;
 
   /**
    * Construct a JMS {@link Message} from an {@link Event} instance. An implementation may choose to

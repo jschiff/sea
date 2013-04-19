@@ -20,13 +20,10 @@ package com.getperka.sea.jms.impl;
  * #L%
  */
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import javax.inject.Inject;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
-import javax.jms.MessageConsumer;
 import javax.jms.MessageListener;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
@@ -52,24 +49,11 @@ public class EventSubscription implements MessageListener {
   private Class<? extends Event> eventType;
   private boolean honorReplyTo;
   private Logger logger;
-  private MessageConsumer messageConsumer;
   private Destination returnQueue;
   private Session session;
-  private final AtomicBoolean shutdown = new AtomicBoolean();
   private EventTransport transport;
 
   protected EventSubscription() {}
-
-  public void cancel() {
-    if (shutdown.getAndSet(true)) {
-      return;
-    }
-    try {
-      messageConsumer.close();
-    } catch (JMSException e) {
-      // Probably already closed
-    }
-  }
 
   public void maybeSendToJms(Event event, EventContext context) {
     if (!eventType.isAssignableFrom(event.getClass())) {
@@ -100,7 +84,7 @@ public class EventSubscription implements MessageListener {
   @Override
   public void onMessage(Message message) {
     try {
-      Event event = transport.decode(eventType, message);
+      Event event = transport.decode(message);
       EventMetadata meta = eventMetadata.get(event);
       try {
         if (message.getJMSReplyTo() != null) {
@@ -117,15 +101,12 @@ public class EventSubscription implements MessageListener {
     }
   }
 
-  public void subscribe(Class<? extends Event> eventType, MessageProducer defaultProducer,
-      boolean honorReplyTo) throws JMSException {
+  public void subscribe(Destination returnQueue, Class<? extends Event> eventType,
+      MessageProducer defaultProducer, boolean honorReplyTo) throws JMSException {
     this.defaultMessageProducer = defaultProducer;
     this.eventType = eventType;
     this.honorReplyTo = honorReplyTo;
-
-    returnQueue = session.createTemporaryQueue();
-    messageConsumer = session.createConsumer(returnQueue, null, false);
-    messageConsumer.setMessageListener(this);
+    this.returnQueue = returnQueue;
   }
 
   @Inject

@@ -50,35 +50,27 @@ public class EventTransportImpl implements EventTransport {
   }
 
   @Override
-  public <T extends Event> T decode(Class<T> eventType, Message message)
-      throws EventTransportException {
+  public Event decode(Message message) throws EventTransportException {
     try {
       // Support for SEA's custom MessageEvent
-      if (MessageEvent.class.isAssignableFrom(eventType)) {
-        T toReturn = injector.getInstance(eventType);
-        ((MessageEvent) toReturn).copyFromMessage(message);
+      String eventName = message.getStringProperty("MessageEvent");
+      if (eventName != null) {
+        MessageEvent toReturn = (MessageEvent) injector.getInstance(
+            Class.forName(eventName, true, Thread.currentThread().getContextClassLoader()));
+        toReturn.copyFromMessage(message);
         return toReturn;
       }
 
       // Assume that any incoming ObjectMessage contains an Event
-      if (Serializable.class.isAssignableFrom(eventType)) {
-        if (!(message instanceof ObjectMessage)) {
-          throw new EventTransportException("Expected a JMS ObjectEvent, received a "
-            + message.getClass().getName());
-        }
-        Serializable event = ((ObjectMessage) message).getObject();
-        try {
-          return eventType.cast(event);
-        } catch (ClassCastException e) {
-          throw new EventTransportException("Incoming JMS ObjectMessage contained a "
-            + event.getClass().getName() + " which is not assignable to the expected event type "
-            + eventType.getName());
-        }
+      if (message instanceof ObjectMessage) {
+        return (Event) ((ObjectMessage) message).getObject();
       }
 
-      throw new EventTransportException("Untransportable event type " + eventType.getName());
+      throw new EventTransportException("Untransportable Message " + message.getJMSMessageID());
     } catch (JMSException e) {
       throw new EventTransportException("Exception occurred during event transport", e);
+    } catch (ClassNotFoundException e) {
+      throw new EventTransportException("Could not find referenced class", e);
     }
   }
 
@@ -86,7 +78,9 @@ public class EventTransportImpl implements EventTransport {
   public Message encode(Event event, EventContext context) throws EventTransportException {
     try {
       if (event instanceof MessageEvent) {
-        return ((MessageEvent) event).toMessage(session);
+        Message message = ((MessageEvent) event).toMessage(session);
+        message.setStringProperty("MessageEvent", event.getClass().getName());
+        return message;
       }
       if (event instanceof Serializable) {
         return session.createObjectMessage((Serializable) event);

@@ -34,6 +34,7 @@ import javax.jms.Session;
 import org.slf4j.Logger;
 
 import com.getperka.sea.Event;
+import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.EventObserver;
 import com.getperka.sea.inject.EventLogger;
 import com.getperka.sea.jms.EventSubscriberException;
@@ -51,6 +52,17 @@ import com.google.inject.Injector;
 @Singleton
 public class SubscriptionObserver implements EventObserver<Subscriptions, Event> {
 
+  /**
+   * Utility method to indicate if the event dispatch was triggered from a JMS queue.
+   * <p>
+   * TODO: This belongs somewhere else, along with the start() and stop() methods.
+   * 
+   * @param userObject the user object returned from {@link EventContext#getUserObject()}.
+   */
+  public static boolean isFromJms(Object userObject) {
+    return userObject instanceof EventSubscriber || userObject instanceof EventSubscription;
+  }
+
   @EventConnection
   @Inject
   Connection connection;
@@ -62,6 +74,7 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
   @Inject
   @EventSession
   Session session;
+
   @Inject
   EventSubscriber subscriber;
 
@@ -107,7 +120,7 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
   @Override
   public void observeEvent(Context<Event> context) {
     // Allow events being sent by a subscription to be dispatched normally
-    if (context.getContext().getUserObject() instanceof EventSubscription) {
+    if (SubscriptionObserver.isFromJms(context.getContext().getUserObject())) {
       return;
     }
     // Don't send already-suppressed events

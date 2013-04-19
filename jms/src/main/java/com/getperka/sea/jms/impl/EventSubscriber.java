@@ -20,6 +20,7 @@ package com.getperka.sea.jms.impl;
  * #L%
  */
 
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -29,15 +30,23 @@ import javax.inject.Provider;
 import javax.inject.Singleton;
 import javax.jms.Destination;
 import javax.jms.JMSException;
+import javax.jms.Message;
 import javax.jms.MessageConsumer;
+import javax.jms.MessageListener;
 import javax.jms.MessageProducer;
+import javax.jms.Queue;
 import javax.jms.Session;
 import javax.jms.Topic;
 
+import org.slf4j.Logger;
+
 import com.getperka.sea.Event;
+import com.getperka.sea.EventDispatch;
 import com.getperka.sea.ext.EventContext;
+import com.getperka.sea.inject.EventLogger;
 import com.getperka.sea.jms.EventSubscriberException;
 import com.getperka.sea.jms.EventTransport;
+import com.getperka.sea.jms.EventTransportException;
 import com.getperka.sea.jms.ReturnMode;
 import com.getperka.sea.jms.RoutingMode;
 import com.getperka.sea.jms.SubscriptionMode;
@@ -46,11 +55,17 @@ import com.getperka.sea.jms.inject.EventSession;
 
 /**
  * The EventSubscriber controls how events are routed across a JMS domain. Specific event types are
- * registered with the EventSubscriber by the {@link SubscriptionObserver}.
+ * registered with the EventSubscriber by the {@link SubscriptionObserver}. This type also handles
+ * messages directed at the local node via its return queue.
  */
 @Singleton
-public class EventSubscriber {
+public class EventSubscriber implements MessageListener {
 
+  @Inject
+  EventDispatch dispatch;
+  @Inject
+  @EventLogger
+  Logger logger;
   @Inject
   @EventSession
   Session session;
@@ -59,7 +74,11 @@ public class EventSubscriber {
   @Inject
   EventTransport transport;
 
+  private MessageConsumer returnConsumer;
+  private Queue returnPath;
   private final AtomicBoolean shutdown = new AtomicBoolean();
+  private final ConcurrentMap<Class<? extends Event>, MessageConsumer> consumers =
+      new ConcurrentHashMap<Class<? extends Event>, MessageConsumer>();
   private final ConcurrentMap<Class<? extends Event>, EventSubscription> subscribed =
       new ConcurrentHashMap<Class<? extends Event>, EventSubscription>();
 
@@ -67,6 +86,17 @@ public class EventSubscriber {
 
   public boolean isSubscribed(Class<? extends Event> eventType) {
     return subscribed.containsKey(eventType);
+  }
+
+  @Override
+  public void onMessage(Message message) {
+    try {
+      Event event = transport.decode(message);
+      // Pass this as the dispatch context to detect send-loops in maybeSendToJms
+      dispatch.fire(event, this);
+    } catch (EventTransportException e) {
+      logger.error("Unable to dispatch returning JMS message", e);
+    }
   }
 
   /**
@@ -77,10 +107,14 @@ public class EventSubscriber {
       return;
     }
 
-    for (EventSubscription subscription : subscribed.values()) {
-      subscription.cancel();
+    // Stop receiving incoming messages
+    for (MessageConsumer subscription : consumers.values()) {
+      close(subscription);
     }
     subscribed.clear();
+
+    // Stop listening for replies
+    close(returnConsumer);
   }
 
   public EventSubscription subscribe(Class<? extends Event> eventType,
@@ -117,7 +151,7 @@ public class EventSubscriber {
       EventSubscription subscription = subscriptions.get();
 
       MessageProducer producer = mode.shouldSend() ? session.createProducer(destination) : null;
-      subscription.subscribe(eventType, producer, honorReplyTo);
+      subscription.subscribe(returnPath, eventType, producer, honorReplyTo);
 
       if (mode.shouldReceive()) {
         MessageConsumer consumer;
@@ -141,13 +175,18 @@ public class EventSubscriber {
         }
 
         consumer.setMessageListener(subscription);
+
+        // Implement last-one-wins policy
+        MessageConsumer existing = consumers.put(eventType, consumer);
+        if (existing != null) {
+          existing.close();
+        }
       }
 
-      // Implement last-one-wins policy
-      EventSubscription existing = subscribed.put(eventType, subscription);
-      if (existing != null) {
-        existing.cancel();
+      if (mode.shouldSend()) {
+        subscribed.put(eventType, subscription);
       }
+
       return subscription;
     } catch (JMSException e) {
       throw new EventSubscriberException("Could not subscribe to event type", e);
@@ -155,8 +194,28 @@ public class EventSubscriber {
   }
 
   void fire(Event event, EventContext context) {
+    if (shutdown.get()) {
+      return;
+    }
     for (EventSubscription subscription : subscribed.values()) {
       subscription.maybeSendToJms(event, context);
+    }
+  }
+
+  @Inject
+  void inject() throws JMSException {
+    returnPath = session.createQueue("returnPath-" + UUID.randomUUID());
+    logger.info("Return queue name {}", returnPath.getQueueName());
+
+    returnConsumer = session.createConsumer(returnPath, null, false);
+    returnConsumer.setMessageListener(this);
+  }
+
+  private void close(MessageConsumer subscription) {
+    try {
+      subscription.close();
+    } catch (JMSException e) {
+      logger.error("Could not close MessageConsumer", e);
     }
   }
 }
