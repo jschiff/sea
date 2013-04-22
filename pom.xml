@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.getperka.sea</groupId>
   <artifactId>sea-parent</artifactId>
-  <version>0.1.4-SNAPSHOT</version>
+  <version>0.1.4</version>
   <packaging>pom</packaging>
   <name>Simple Event Architecture</name>
   <description>An event-dispatch mechanism</description>
@@ -18,7 +18,7 @@
     <url>https://github.com/perka/sea</url>
     <connection>scm:git:git@github.com:perka/sea.git</connection>
     <developerConnection>scm:git:git@github.com:perka/sea.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>sea-0.1.4</tag>
   </scm>
 
   <parent>
