@@ -3,7 +3,7 @@ package com.getperka.sea.jms;
  * #%L
  * Simple Event Architecture - JMS Support
  * %%
- * Copyright (C) 2012 Perka Inc.
+ * Copyright (C) 2012 - 2013 Perka Inc.
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,19 +19,23 @@ package com.getperka.sea.jms;
  * #L%
  */
 
-import javax.jms.Queue;
-import javax.jms.Topic;
-
 /**
- * Controls the destination type used when routing an event message.
+ * Defines a set of behaviors for how events should be routed.
  */
-public enum DestinationType {
+public enum EventProfile {
   /**
-   * Use a JMS {@link Queue}. Events sent via a queue will be received by exactly one subscriber.
+   * Announcement events are sent to each node participating in the application stack. If re-fired
+   * after being received, the event will be sent to all nodes again.
    */
-  QUEUE,
+  ANNOUNCEMENT,
   /**
-   * Use a JMS {@link Topic}. Events sent via a topic will be received by all subscribers.
+   * An event that is received by every node in the application, but when re-fired returns to the
+   * node that originally sent the event.
    */
-  TOPIC;
+  SCATTER_GATHER,
+  /**
+   * A request-response style of event. When fired, the event will be received by exactly one node.
+   * If re-fired after being received, the event will only be received by the original sender.
+   */
+  WORK;
 }

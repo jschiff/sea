@@ -22,14 +22,11 @@ package com.getperka.sea.jms.impl;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.jms.Connection;
 import javax.jms.JMSException;
-import javax.jms.Session;
 
 import org.slf4j.Logger;
 
@@ -37,13 +34,10 @@ import com.getperka.sea.Event;
 import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.EventObserver;
 import com.getperka.sea.inject.EventLogger;
-import com.getperka.sea.jms.EventSubscriberException;
-import com.getperka.sea.jms.RoutingMode;
 import com.getperka.sea.jms.SubscriptionOptions;
 import com.getperka.sea.jms.Subscriptions;
 import com.getperka.sea.jms.ext.SubscriptionSource;
 import com.getperka.sea.jms.inject.EventConnection;
-import com.getperka.sea.jms.inject.EventSession;
 import com.google.inject.Injector;
 
 /**
@@ -60,7 +54,7 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
    * @param userObject the user object returned from {@link EventContext#getUserObject()}.
    */
   public static boolean isFromJms(Object userObject) {
-    return userObject instanceof EventSubscriber || userObject instanceof EventSubscription;
+    return userObject instanceof MessageBridge;
   }
 
   @EventConnection
@@ -72,19 +66,20 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
   @EventLogger
   Logger logger;
   @Inject
-  @EventSession
-  Session session;
-
-  @Inject
-  EventSubscriber subscriber;
-
-  private ConcurrentMap<Class<? extends Event>, Boolean> shouldSuppress =
-      new ConcurrentHashMap<Class<? extends Event>, Boolean>();
+  MessageBridge messageThread;
 
   protected SubscriptionObserver() {}
 
+  public void drain() {
+    try {
+      messageThread.drain();
+    } catch (Exception e) {
+      logger.error("Could not shut down MessageThread", e);
+    }
+  }
+
   @Override
-  public void initialize(Subscriptions subscriptions) {
+  public void initialize(final Subscriptions subscriptions) {
     final Map<Class<? extends Event>, SubscriptionOptions> events =
         new HashMap<Class<? extends Event>, SubscriptionOptions>();
 
@@ -93,6 +88,11 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
       @Override
       public void subscribe(Class<? extends Event> eventType, SubscriptionOptions options) {
         events.put(eventType, options);
+      }
+
+      @Override
+      public Subscriptions subscriptions() {
+        return subscriptions;
       }
     };
 
@@ -104,14 +104,18 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
       injector.getInstance(clazz).configureSubscriptions(ctx);
     }
 
+    if (!messageThread.isAlive()) {
+      messageThread.start();
+      messageThread.setApplicationName(subscriptions.applicationName());
+    }
+
     // Perform actual registration
     for (Map.Entry<Class<? extends Event>, SubscriptionOptions> entry : events.entrySet()) {
       Class<? extends Event> eventType = entry.getKey();
       SubscriptionOptions options = entry.getValue();
       try {
-        shouldSuppress.put(eventType, RoutingMode.REMOTE.equals(options.routingMode()));
-        subscriber.subscribe(eventType, options);
-      } catch (EventSubscriberException e) {
+        messageThread.subscribe(eventType, options);
+      } catch (Exception e) {
         throw new RuntimeException("Could not subscribe to event", e);
       }
     }
@@ -127,47 +131,23 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
     if (context.isSuppressed()) {
       return;
     }
-    if (shouldSuppress(context.getEvent().getClass())) {
-      context.suppressEvent();
+    try {
+      messageThread.maybeSendToJms(context.getOriginalEvent(), context.getContext());
+    } catch (Exception e) {
+      logger.error("Could not send event to JMS", e);
     }
-    subscriber.fire(context.getOriginalEvent(), context.getContext());
   }
 
   @Override
   public void shutdown() {
-    subscriber.shutdown();
     try {
-      session.close();
+      connection.close();
     } catch (JMSException e) {
-      logger.error("Could not close JMS session", e);
+      logger.error("Could not close Connection", e);
     }
   }
 
   public void start() throws JMSException {
     connection.start();
-  }
-
-  public void stop() throws JMSException {
-    connection.stop();
-  }
-
-  private boolean shouldSuppress(Class<? extends Event> eventType) {
-    Boolean suppress = shouldSuppress.get(eventType);
-    if (Boolean.TRUE.equals(suppress)) {
-      return true;
-    }
-
-    // Shouldn't be the usual case, but look for the first assignable type and copy that value
-    for (Map.Entry<Class<? extends Event>, Boolean> entry : shouldSuppress.entrySet()) {
-      if (entry.getKey().isAssignableFrom(eventType)) {
-        suppress = entry.getValue();
-        shouldSuppress.put(eventType, suppress);
-        return suppress;
-      }
-    }
-
-    // Memoize ignoring everything else
-    shouldSuppress.put(eventType, false);
-    return false;
   }
 }

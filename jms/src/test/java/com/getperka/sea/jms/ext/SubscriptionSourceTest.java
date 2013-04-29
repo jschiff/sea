@@ -32,12 +32,12 @@ import com.getperka.sea.jms.JmsTestBase;
 import com.getperka.sea.jms.SubscriptionOptions;
 import com.getperka.sea.jms.Subscriptions;
 import com.getperka.sea.jms.ext.SubscriptionSourceTest.MySource;
-import com.getperka.sea.jms.impl.EventSubscriber;
+import com.getperka.sea.jms.impl.MessageBridge;
 
 /**
  * Verifies that {@link SubscriptionSource} registration works.
  */
-@Subscriptions(sources = MySource.class)
+@Subscriptions(applicationName = "test", sources = MySource.class)
 public class SubscriptionSourceTest extends JmsTestBase {
   static class MyEvent implements Event, Serializable {
     private static final long serialVersionUID = 1L;
@@ -54,8 +54,8 @@ public class SubscriptionSourceTest extends JmsTestBase {
   public void test() {
     eventDispatch.addGlobalDecorator(getClass());
 
-    EventSubscriber subscriber = ((HasInjector) eventDispatch).getInjector()
-        .getInstance(EventSubscriber.class);
-    assertTrue(subscriber.isSubscribed(MyEvent.class));
+    MessageBridge messageThread = ((HasInjector) eventDispatch).getInjector()
+        .getInstance(MessageBridge.class);
+    assertTrue(messageThread.isSubscribed(MyEvent.class));
   }
 }

@@ -26,16 +26,13 @@ import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
 import javax.jms.Session;
 
-import com.getperka.sea.jms.impl.EventSubscriber;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 
 public class JmsEventModule extends AbstractModule {
 
   @Override
-  protected void configure() {
-    bind(EventSubscriber.class);
-  }
+  protected void configure() {}
 
   @EventConnection
   @Provides
@@ -48,7 +45,6 @@ public class JmsEventModule extends AbstractModule {
 
   @EventSession
   @Provides
-  @Singleton
   Session session(@EventConnection Connection conn) throws JMSException {
     return conn.createSession(false, Session.AUTO_ACKNOWLEDGE);
   }

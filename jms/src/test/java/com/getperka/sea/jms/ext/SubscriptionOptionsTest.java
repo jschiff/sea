@@ -37,15 +37,16 @@ import com.getperka.sea.Event;
 import com.getperka.sea.jms.Subscription;
 import com.getperka.sea.jms.SubscriptionOptions;
 import com.getperka.sea.jms.Subscriptions;
-import com.getperka.sea.jms.ext.SubscriptionOptionsBuilder;
 import com.getperka.sea.jms.ext.SubscriptionOptionsBuilder.Handler;
 
 /**
  * Verifies the behavior of {@link SubscriptionOptionsBuilder}.
  */
-@Subscriptions(@Subscription(
-    event = Event.class,
-    options = @SubscriptionOptions(destinationName = "foo")))
+@Subscriptions(
+    applicationName = "test",
+    value = @Subscription(
+        event = Event.class,
+        options = @SubscriptionOptions(destinationName = "override")))
 public class SubscriptionOptionsTest {
 
   @Test

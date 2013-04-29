@@ -23,6 +23,7 @@ package com.getperka.sea.jms;
 import java.io.Serializable;
 
 import javax.jms.Message;
+import javax.jms.Session;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.ext.EventContext;
@@ -50,5 +51,11 @@ public interface EventTransport {
    * Construct a JMS {@link Message} from an {@link Event} instance. An implementation may choose to
    * return {@code null}, in which case the event will not be sent.
    */
-  Message encode(Event event, EventContext context) throws EventTransportException;
+  Message encode(Session session, Event event, EventContext context) throws EventTransportException;
+
+  /**
+   * Return a string uniquely identifying the type. The value returned from this method need not be
+   * reversible.
+   */
+  String getTypeName(Class<? extends Event> eventType);
 }

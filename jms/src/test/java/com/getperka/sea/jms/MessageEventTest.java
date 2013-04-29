@@ -40,8 +40,11 @@ import com.getperka.sea.util.EventLatch;
  */
 public class MessageEventTest extends JmsTestBase {
 
-  @Subscriptions(@Subscription(event = MyEvent.class, options = @SubscriptionOptions(
-      messageSelector = "myHeader = 'Hello world!'")))
+  @Subscriptions(
+      applicationName = "test",
+      value = @Subscription(
+          event = MyEvent.class,
+          options = @SubscriptionOptions(messageSelector = "myHeader = 'Hello world!'")))
   interface HasHeaderSubscription {}
 
   static class MyEvent implements MessageEvent {
@@ -68,11 +71,17 @@ public class MessageEventTest extends JmsTestBase {
     }
   }
 
-  @Subscriptions(@Subscription(event = MyEvent.class, options = @SubscriptionOptions(
-      messageSelector = "myHeader = 'Does not compute'")))
+  @Subscriptions(
+      applicationName = "test",
+      value = @Subscription(
+          event = MyEvent.class,
+          options = @SubscriptionOptions(
+              messageSelector = "myHeader = 'Does not compute'")))
   interface OtherHeaderSubscription {}
 
-  @Subscriptions(@Subscription(event = MyEvent.class))
+  @Subscriptions(
+      applicationName = "test",
+      value = @Subscription(event = MyEvent.class))
   interface SimpleSubscription {}
 
   @Test(timeout = TEST_TIMEOUT)

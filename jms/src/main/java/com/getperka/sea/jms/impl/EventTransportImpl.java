@@ -33,13 +33,12 @@ import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.jms.EventTransport;
 import com.getperka.sea.jms.EventTransportException;
 import com.getperka.sea.jms.MessageEvent;
-import com.getperka.sea.jms.inject.EventSession;
 import com.google.inject.Injector;
 
 public class EventTransportImpl implements EventTransport {
 
-  private Injector injector;
-  private Session session;
+  @Inject
+  Injector injector;
 
   protected EventTransportImpl() {}
 
@@ -75,7 +74,8 @@ public class EventTransportImpl implements EventTransport {
   }
 
   @Override
-  public Message encode(Event event, EventContext context) throws EventTransportException {
+  public Message encode(Session session, Event event, EventContext context)
+      throws EventTransportException {
     try {
       if (event instanceof MessageEvent) {
         Message message = ((MessageEvent) event).toMessage(session);
@@ -92,10 +92,8 @@ public class EventTransportImpl implements EventTransport {
     }
   }
 
-  @Inject
-  void inject(Injector injector, @EventSession Session session) {
-    this.injector = injector;
-    this.session = session;
+  @Override
+  public String getTypeName(Class<? extends Event> eventType) {
+    return eventType.getName();
   }
-
 }

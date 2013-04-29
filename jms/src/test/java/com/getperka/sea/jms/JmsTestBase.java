@@ -28,9 +28,24 @@ import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
 import javax.jms.Session;
 
-import org.apache.activemq.ActiveMQConnectionFactory;
+import org.hornetq.api.core.TransportConfiguration;
+import org.hornetq.core.config.Configuration;
+import org.hornetq.core.config.impl.ConfigurationImpl;
+import org.hornetq.core.remoting.impl.invm.InVMAcceptorFactory;
+import org.hornetq.core.remoting.impl.invm.InVMConnectorFactory;
+import org.hornetq.jms.server.config.ConnectionFactoryConfiguration;
+import org.hornetq.jms.server.config.JMSConfiguration;
+import org.hornetq.jms.server.config.JMSQueueConfiguration;
+import org.hornetq.jms.server.config.TopicConfiguration;
+import org.hornetq.jms.server.config.impl.ConnectionFactoryConfigurationImpl;
+import org.hornetq.jms.server.config.impl.JMSConfigurationImpl;
+import org.hornetq.jms.server.config.impl.JMSQueueConfigurationImpl;
+import org.hornetq.jms.server.config.impl.TopicConfigurationImpl;
+import org.hornetq.jms.server.embedded.EmbeddedJMS;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.EventDispatchers;
@@ -47,32 +62,92 @@ import com.google.inject.Module;
 public class JmsTestBase {
   protected static final int TEST_TIMEOUT = 1000;
 
-  protected ConnectionFactory connectionFactory;
+  protected static ConnectionFactory connectionFactory;
+  private static EmbeddedJMS jmsServer;
+
+  @AfterClass
+  public static void afterClass() throws Exception {
+    jmsServer.stop();
+  }
+
+  @BeforeClass
+  public static void beforeClass() throws Exception {
+    connectionFactory = startServer();
+  }
+
+  /**
+   * Cribbed from the hornetq jms/embedded example.
+   */
+  private static ConnectionFactory startServer() throws Exception {
+    // Step 1. Create HornetQ core configuration, and set the properties accordingly
+    Configuration configuration = new ConfigurationImpl();
+    configuration.setPersistenceEnabled(false);
+    configuration.setJournalDirectory("target/data/journal");
+    configuration.setSecurityEnabled(false);
+    configuration.getAcceptorConfigurations()
+        .add(new TransportConfiguration(InVMAcceptorFactory.class.getName()));
+
+    TransportConfiguration connectorConfig = new TransportConfiguration(
+        InVMConnectorFactory.class.getName());
+
+    configuration.getConnectorConfigurations().put("connector", connectorConfig);
+
+    // Step 2. Create the JMS configuration
+    JMSConfiguration jmsConfig = new JMSConfigurationImpl();
+
+    // Step 3. Configure the JMS ConnectionFactory
+    ArrayList<String> connectorNames = new ArrayList<String>();
+    connectorNames.add("connector");
+    ConnectionFactoryConfiguration cfConfig = new ConnectionFactoryConfigurationImpl("cf", false,
+        connectorNames, "/cf");
+    jmsConfig.getConnectionFactoryConfigurations().add(cfConfig);
+
+    // Step 4. Configure the JMS Queue
+    JMSQueueConfiguration queueConfig = new JMSQueueConfigurationImpl("test", null, false);
+    jmsConfig.getQueueConfigurations().add(queueConfig);
+
+    TopicConfiguration topicConfig = new TopicConfigurationImpl("test");
+    jmsConfig.getTopicConfigurations().add(topicConfig);
+
+    // Step 5. Start the JMS Server using the HornetQ core server and the JMS configuration
+    jmsServer = new EmbeddedJMS();
+    jmsServer.setConfiguration(configuration);
+    jmsServer.setJmsConfiguration(jmsConfig);
+    jmsServer.start();
+    System.out.println("Started Embedded JMS Server");
+
+    // Step 6. Lookup JMS resources defined in the configuration
+    ConnectionFactory cf = (ConnectionFactory) jmsServer.lookup("/cf");
+    return cf;
+  };
+
   /**
    * The 0-th element of {@link #eventDispatches}.
    */
   protected EventDispatch eventDispatch;
-  private List<EventDispatch> eventDispatches = new ArrayList<EventDispatch>();;
+
+  private List<EventDispatch> eventDispatches = new ArrayList<EventDispatch>();
+
   protected Session testSession;
+
+  private Connection testConnection;
 
   @After
   public void after() throws JMSException {
     for (EventDispatch dispatch : eventDispatches) {
-      ((HasInjector) dispatch).getInjector().getInstance(SubscriptionObserver.class).stop();
+      ((HasInjector) dispatch).getInjector().getInstance(SubscriptionObserver.class).drain();
       dispatch.shutdown();
     }
     testSession.close();
+    testConnection.close();
   }
 
   @Before
-  public void before() throws JMSException {
-    // Use a non-persistent, loopback test server
-    connectionFactory = new ActiveMQConnectionFactory(
-        "vm://localhost?broker.persistent=false");
+  public void before() throws Exception {
 
-    Connection connection = connectionFactory.createConnection();
-    connection.start();
-    testSession = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+    testConnection = connectionFactory.createConnection();
+    testConnection.start();
+    testSession = testConnection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 
     for (int i = 0, j = getDomainCount(); i < j; i++) {
       Module module = EventSubscribers.createModule(connectionFactory, null);

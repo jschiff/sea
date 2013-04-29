@@ -38,19 +38,31 @@ import org.junit.Test;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.jms.PlumbingSmokeTest.MyQueueEvent;
+import com.getperka.sea.jms.PlumbingSmokeTest.MyQueueEventSendOnly;
 import com.getperka.sea.jms.PlumbingSmokeTest.MyTopicEvent;
 import com.getperka.sea.util.EventLatch;
 
-@Subscriptions({
-    @Subscription(
-        event = MyQueueEvent.class,
-        options = @SubscriptionOptions(
-            destinationType = DestinationType.QUEUE, routingMode = RoutingMode.LOCAL)),
-    @Subscription(
-        event = MyTopicEvent.class) })
+@Subscriptions(
+    applicationName = "test",
+    value = {
+        @Subscription(
+            event = MyQueueEvent.class,
+            options = @SubscriptionOptions(
+                profile = EventProfile.WORK)),
+        @Subscription(
+            event = MyQueueEventSendOnly.class,
+            options = @SubscriptionOptions(
+                profile = EventProfile.WORK,
+                subscriptionMode = SubscriptionMode.SEND)),
+        @Subscription(
+            event = MyTopicEvent.class) })
 public class PlumbingSmokeTest extends JmsTestBase {
 
   static class MyQueueEvent implements Event, Serializable {
+    private static final long serialVersionUID = 1L;
+  }
+
+  static class MyQueueEventSendOnly implements Event, Serializable {
     private static final long serialVersionUID = 1L;
   }
 
@@ -61,15 +73,20 @@ public class PlumbingSmokeTest extends JmsTestBase {
   @Test(timeout = TEST_TIMEOUT)
   public void testQueueEventReceive() throws JMSException, EventSubscriberException,
       InterruptedException {
-
-    Queue queue = testSession.createQueue(MyQueueEvent.class.getCanonicalName());
+    Queue temp = testSession.createTemporaryQueue();
+    Queue queue = testSession.createQueue("test");
     assertEmpty(queue);
 
     EventLatch<MyQueueEvent> receiver = EventLatch.create(eventDispatch,
         MyQueueEvent.class, 1);
 
     MyQueueEvent event = new MyQueueEvent();
-    testSession.createProducer(queue).send(testSession.createObjectMessage(event));
+    ObjectMessage message = testSession.createObjectMessage(event);
+    message.setJMSReplyTo(temp);
+    message.setJMSType(event.getClass().getName());
+
+    testSession.createProducer(queue).send(message);
+
     receiver.await();
     MyQueueEvent received = receiver.getEventQueue().poll();
     assertNotNull(received);
@@ -80,7 +97,7 @@ public class PlumbingSmokeTest extends JmsTestBase {
 
     // Now re-fire the event and make sure it's in the queue
     eventDispatch.fire(received);
-    MessageConsumer consumer = testSession.createConsumer(queue);
+    MessageConsumer consumer = testSession.createConsumer(temp);
     assertNotNull(((ObjectMessage) consumer.receive()).getObject());
     assertNull(consumer.receiveNoWait());
     consumer.close();
@@ -88,48 +105,42 @@ public class PlumbingSmokeTest extends JmsTestBase {
 
   @Test(timeout = TEST_TIMEOUT)
   public void testQueueEventSend() throws EventSubscriberException, JMSException {
-    Queue queue = testSession.createQueue(MyQueueEvent.class.getCanonicalName());
+    Queue queue = testSession.createQueue("test");
     MessageConsumer consumer = testSession.createConsumer(queue);
 
-    eventDispatch.fire(new MyQueueEvent());
+    eventDispatch.fire(new MyQueueEventSendOnly());
     Message m = consumer.receive();
-    assertEquals(MyQueueEvent.class, ((ObjectMessage) m).getObject().getClass());
+    assertEquals(MyQueueEventSendOnly.class, ((ObjectMessage) m).getObject().getClass());
     consumer.close();
   }
 
   @Test(timeout = TEST_TIMEOUT)
   public void testTopicEventReceive() throws JMSException, EventSubscriberException,
       InterruptedException {
-    Topic queue = testSession.createTopic(MyTopicEvent.class.getCanonicalName());
-    MessageConsumer consumer = testSession.createConsumer(queue);
+    Topic queue = testSession.createTopic("test");
 
     EventLatch<MyTopicEvent> receiver = EventLatch.create(eventDispatch,
         MyTopicEvent.class, 1);
 
     MyTopicEvent event = new MyTopicEvent();
-    testSession.createProducer(queue).send(testSession.createObjectMessage(event));
-    // Drain this view of the topic
-    assertNotNull(((ObjectMessage) consumer.receive()).getObject());
-    assertNull(consumer.receiveNoWait());
+    ObjectMessage message = testSession.createObjectMessage(event);
+    message.setJMSType(event.getClass().getName());
+    testSession.createProducer(queue).send(message);
 
     receiver.await();
     MyTopicEvent received = receiver.getEventQueue().poll();
     assertNotNull(received);
     assertNotSame(event, received);
 
-    // Ensure that the event wasn't re-sent to the queue
-    assertNull(consumer.receiveNoWait());
-
-    // Now re-fire the event and make sure it was published to the topic
+    // Now re-fire the event and make sure it was re-published to the topic
     eventDispatch.fire(received);
-    assertNotNull(((ObjectMessage) consumer.receive()).getObject());
-    assertNull(consumer.receiveNoWait());
-    consumer.close();
+
+    receiver.await();
   }
 
   @Test(timeout = TEST_TIMEOUT)
   public void testTopicEventSend() throws EventSubscriberException, JMSException {
-    Topic topic = testSession.createTopic(MyTopicEvent.class.getCanonicalName());
+    Topic topic = testSession.createTopic("test");
     MessageConsumer consumer = testSession.createConsumer(topic);
     eventDispatch.fire(new MyTopicEvent());
     Message m = consumer.receive();

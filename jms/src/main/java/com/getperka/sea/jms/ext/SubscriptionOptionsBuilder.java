@@ -27,9 +27,7 @@ import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.getperka.sea.jms.DestinationType;
-import com.getperka.sea.jms.ReturnMode;
-import com.getperka.sea.jms.RoutingMode;
+import com.getperka.sea.jms.EventProfile;
 import com.getperka.sea.jms.SubscriptionMode;
 import com.getperka.sea.jms.SubscriptionOptions;
 
@@ -134,18 +132,8 @@ public class SubscriptionOptionsBuilder {
     throw new RuntimeException("Could not copy public methods", ex);
   }
 
-  public SubscriptionOptionsBuilder destinationName(String name) {
-    values.put("destinationName", name);
-    return this;
-  }
-
-  public SubscriptionOptionsBuilder destinationType(DestinationType type) {
-    values.put("destinationType", type);
-    return this;
-  }
-
-  public SubscriptionOptionsBuilder durableSubscriberId(String name) {
-    values.put("durableSubscriberId", name);
+  public SubscriptionOptionsBuilder destinationName(String destinationName) {
+    values.put("destinationName", destinationName);
     return this;
   }
 
@@ -154,13 +142,8 @@ public class SubscriptionOptionsBuilder {
     return this;
   }
 
-  public SubscriptionOptionsBuilder returnMode(ReturnMode mode) {
-    values.put("returnMode", mode);
-    return this;
-  }
-
-  public SubscriptionOptionsBuilder routingMode(RoutingMode mode) {
-    values.put("routingMode", mode);
+  public SubscriptionOptionsBuilder profile(EventProfile profile) {
+    values.put("profile", profile);
     return this;
   }
 

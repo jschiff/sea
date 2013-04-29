@@ -29,7 +29,8 @@ import com.getperka.sea.jms.inject.JmsEventModule;
 import com.google.inject.Module;
 
 /**
- * A factory for {@link EventSubscriber} instances.
+ * Creates a Guice module that can be added to {@link EventDispatchers#create(Module...)} to add
+ * support for JMS.
  */
 public class EventSubscribers {
   /**

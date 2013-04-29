@@ -37,6 +37,11 @@ import com.getperka.sea.jms.impl.SubscriptionObserver;
 @Target({ ElementType.PACKAGE, ElementType.METHOD, ElementType.TYPE })
 public @interface Subscriptions {
   /**
+   * Used as the basis for a queue and a topic for the application stack.
+   */
+  String applicationName();
+
+  /**
    * Subscriptions may be configured dynamically by providing SubscriptionSource types. The
    * implementing types must have zero-arg constructors or injection bindings.
    */

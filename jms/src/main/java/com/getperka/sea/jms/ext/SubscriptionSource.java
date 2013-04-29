@@ -49,6 +49,11 @@ public interface SubscriptionSource {
      * @see SubscriptionOptionsBuilder
      */
     void subscribe(Class<? extends Event> eventType, SubscriptionOptions options);
+
+    /**
+     * Returns the top-level Subscriptions annotation.
+     */
+    Subscriptions subscriptions();
   }
 
   /**

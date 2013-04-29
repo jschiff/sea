@@ -26,11 +26,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import javax.jms.Message;
-import javax.jms.Queue;
-import javax.jms.Topic;
-
-import com.getperka.sea.EventDispatch;
 import com.getperka.sea.jms.ext.SubscriptionOptionsBuilder;
 
 /**
@@ -51,46 +46,24 @@ public @interface SubscriptionOptions {
   SubscriptionOptions DEFAULT = new SubscriptionOptionsBuilder().build();
 
   /**
-   * Allows the name of the queue or topic to be overridden. If left unspecified, the canonical name
-   * of the event type will be used.
+   * Override the destination name for the event. If unspecified, the event will be sent to a queue
+   * or topic whose name is {@link Subscriptions#applicationName()}.
    */
   String destinationName() default "";
 
   /**
-   * An event can be sent either via a JMS {@link Queue} or a {@link Topic}. The former is provides
-   * single-issue distribution semantics, while the latter provides broadcast semantics. The default
-   * is {@link DestinationType#TOPIC}.
-   */
-  DestinationType destinationType() default DestinationType.TOPIC;
-
-  /**
-   * Durable subscriptions are used with {@link DestinationType#TOPIC} to ensure that all messages
-   * sent to a topic will eventually be received by a subscriber, even if the process is temporarily
-   * halted.
-   */
-  String durableSubscriberId() default "";
-
-  /**
-   * A JMS message selector expression used to filter messages received by a subscription.
+   * A JMS message selector expression used to filter messages received by a subscription. Custom
+   * {@link EventTransport} instances can add additional properties to the messages to allow for
+   * selective filtering of subscriptions.
    * 
    * @see Message
    */
   String messageSelector() default "";
 
   /**
-   * An event's return mode determines how the event is routed if it is re-fired after being
-   * received from a JMS destination. The default is to use the usual destination for the event.
+   * Describes a pattern for how events should behave when sent over JMS.
    */
-  ReturnMode returnMode() default ReturnMode.ORIGINAL_DESTINATION;
-
-  /**
-   * Controls how the event is routed to receivers attached to the local {@link EventDispatch}
-   * instance. The default mode, {@link RoutingMode#REMOTE}, will prevent the event from being
-   * dispatched directly to local receivers, instead causing the event to be sent to JMS. This mode
-   * avoids the need to make a distinction between locally-originated and remote-originated events,
-   * since all events are effectively remote-originated.
-   */
-  RoutingMode routingMode() default RoutingMode.REMOTE;
+  EventProfile profile() default EventProfile.ANNOUNCEMENT;
 
   /**
    * A subscriber can elect not to send or receive certain events by using an alternate
