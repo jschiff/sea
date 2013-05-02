@@ -1,4 +1,5 @@
 package com.getperka.sea.jms.impl;
+
 /*
  * #%L
  * Simple Event Architecture - JMS Support
@@ -136,6 +137,7 @@ public class MessageBridge extends Thread implements MessageListener {
         if (!options.messageSelector().isEmpty()) {
           selector += " AND " + options.messageSelector();
         }
+
         consumer = session.createConsumer(dest, selector, false);
         consumer.setMessageListener(MessageBridge.this);
       }
@@ -184,6 +186,30 @@ public class MessageBridge extends Thread implements MessageListener {
     }
   }
 
+  class RetryOnce implements Action {
+    private final Action delegate;
+
+    public RetryOnce(Action delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public void process(Session session) throws JMSException, EventTransportException {
+      try {
+        delegate.process(session);
+      } catch (JMSException e) {
+        if (!retryOnce) {
+          throw e;
+        }
+        logger.info("Could not send message. Retrying once.", e);
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException ignored) {}
+        delegate.process(session);
+      }
+    }
+  }
+
   /**
    * An null sentinal Exception used by {@link #execute(Action)}.
    */
@@ -196,10 +222,10 @@ public class MessageBridge extends Thread implements MessageListener {
   @EventLogger
   @Inject
   Logger logger;
-  @EventSession
   /**
    * Sessions aren't thread-safe, use {@link #threadLocalSession} instead.
    */
+  @EventSession
   @Inject
   Provider<Session> sessions;
   @Inject
@@ -218,6 +244,7 @@ public class MessageBridge extends Thread implements MessageListener {
   };
   private final SynchronousQueue<Action> todo = new SynchronousQueue<Action>();
   private Queue returnPath;
+  private boolean retryOnce = true;
 
   MessageBridge() {
     setDaemon(true);
@@ -264,6 +291,7 @@ public class MessageBridge extends Thread implements MessageListener {
     if (message == null) {
       return;
     }
+
     execute(new EventSend(event, message));
   }
 
@@ -325,6 +353,10 @@ public class MessageBridge extends Thread implements MessageListener {
     this.applicationName = applicationName;
   }
 
+  public void setRetryOnce(boolean retryOnce) {
+    this.retryOnce = retryOnce;
+  }
+
   public void subscribe(Class<? extends Event> eventType, SubscriptionOptions options)
       throws Exception {
     if (!transport.canTransport(eventType)) {
@@ -336,6 +368,14 @@ public class MessageBridge extends Thread implements MessageListener {
   }
 
   private void execute(Action action) throws Exception {
+    /*
+     * Depending on how well the JMS client library handles broker failovers, it may be worthwhile
+     * to retry failed actions.
+     */
+    if (retryOnce) {
+      action = new RetryOnce(action);
+    }
+
     todo.put(action);
     Exception ex = done.take();
     if (!NO_EXCEPTION.equals(ex)) {

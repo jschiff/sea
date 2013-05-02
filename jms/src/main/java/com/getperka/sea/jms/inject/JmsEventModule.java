@@ -23,9 +23,13 @@ package com.getperka.sea.jms.inject;
 import javax.inject.Singleton;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
+import javax.jms.ExceptionListener;
 import javax.jms.JMSException;
 import javax.jms.Session;
 
+import org.slf4j.Logger;
+
+import com.getperka.sea.inject.EventLogger;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 
@@ -38,8 +42,15 @@ public class JmsEventModule extends AbstractModule {
   @Provides
   @Singleton
   Connection connection(
-      @EventConnectionFactory ConnectionFactory factory) throws JMSException {
+      @EventConnectionFactory ConnectionFactory factory,
+      final @EventLogger Logger logger) throws JMSException {
     Connection conn = factory.createConnection();
+    conn.setExceptionListener(new ExceptionListener() {
+      @Override
+      public void onException(JMSException e) {
+        logger.info("Connection-level JMSException", e);
+      }
+    });
     return conn;
   }
 
