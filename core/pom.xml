@@ -6,13 +6,13 @@
     <url>https://github.com/perka/sea</url>
     <connection>scm:git:git@github.com:perka/sea.git</connection>
     <developerConnection>scm:git:git@github.com:perka/sea.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>sea-0.1.5</tag>
   </scm>
 
   <parent>
     <groupId>com.getperka.sea</groupId>
     <artifactId>sea-parent</artifactId>
-    <version>0.1.5-SNAPSHOT</version>
+    <version>0.1.5</version>
   </parent>
 
   <dependencies>
