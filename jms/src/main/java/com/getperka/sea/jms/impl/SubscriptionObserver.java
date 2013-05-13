@@ -104,9 +104,11 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
       injector.getInstance(clazz).configureSubscriptions(ctx);
     }
 
-    if (!messageThread.isAlive()) {
+    messageThread.setApplicationName(subscriptions.applicationName());
+    try {
       messageThread.start();
-      messageThread.setApplicationName(subscriptions.applicationName());
+    } catch (JMSException e) {
+      throw new RuntimeException("Could not start MessageBridge", e);
     }
 
     // Perform actual registration

@@ -20,10 +20,16 @@ package com.getperka.sea.jms.impl;
  * #L%
  */
 
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
@@ -56,15 +62,25 @@ import com.getperka.sea.jms.inject.EventSession;
  * implemented as an {@link Action} which is transferred from the caller to the actual thread.
  */
 @Singleton
-public class MessageBridge extends Thread implements MessageListener {
+public class MessageBridge implements MessageListener {
 
   interface Action {
-    void process(Session session) throws JMSException, EventTransportException;
+    SessionName getSessionName();
+
+    void process(Session session) throws JMSException;
   }
 
   class Drain implements Action {
+    /**
+     * No session required.
+     */
     @Override
-    public void process(Session session) throws JMSException, EventTransportException {
+    public SessionName getSessionName() {
+      return null;
+    }
+
+    @Override
+    public void process(Session session) throws JMSException {
       for (EventRouting routing : routeMap.values()) {
         if (routing.consumer != null) {
           routing.consumer.close();
@@ -96,7 +112,12 @@ public class MessageBridge extends Thread implements MessageListener {
     }
 
     @Override
-    public void process(Session session) throws JMSException, EventTransportException {
+    public SessionName getSessionName() {
+      return SessionName.RECEIVE;
+    }
+
+    @Override
+    public void process(Session session) throws JMSException {
 
       String destinationName = options.destinationName();
       if (destinationName == null || destinationName.isEmpty()) {
@@ -159,7 +180,12 @@ public class MessageBridge extends Thread implements MessageListener {
     }
 
     @Override
-    public void process(Session session) throws JMSException, EventTransportException {
+    public SessionName getSessionName() {
+      return SessionName.SEND;
+    }
+
+    @Override
+    public void process(Session session) throws JMSException {
       EventRouting routing = routeMap.get(event.getClass());
       Destination destination = routing.destination;
       if (routing.honorReplyTo) {
@@ -194,7 +220,12 @@ public class MessageBridge extends Thread implements MessageListener {
     }
 
     @Override
-    public void process(Session session) throws JMSException, EventTransportException {
+    public SessionName getSessionName() {
+      return delegate.getSessionName();
+    }
+
+    @Override
+    public void process(Session session) throws JMSException {
       try {
         delegate.process(session);
       } catch (JMSException e) {
@@ -210,10 +241,17 @@ public class MessageBridge extends Thread implements MessageListener {
     }
   }
 
-  /**
-   * An null sentinal Exception used by {@link #execute(Action)}.
-   */
-  private static final Exception NO_EXCEPTION = new Exception();
+  enum SessionName {
+    RECEIVE,
+    SEND;
+  }
+
+  enum State {
+    NASCENT,
+    STARTING,
+    STARTED,
+    DRAINING;
+  }
 
   @Inject
   EventDispatch dispatch;
@@ -223,7 +261,7 @@ public class MessageBridge extends Thread implements MessageListener {
   @Inject
   Logger logger;
   /**
-   * Sessions aren't thread-safe, use {@link #threadLocalSession} instead.
+   * Reminder: Sessions aren't thread-safe.
    */
   @EventSession
   @Inject
@@ -232,31 +270,27 @@ public class MessageBridge extends Thread implements MessageListener {
   EventTransport transport;
 
   private String applicationName;
-  private final SynchronousQueue<Exception> done = new SynchronousQueue<Exception>();
   private MessageProducer producer;
-  private final ConcurrentMap<Class<?>, EventRouting> routeMap = new ConcurrentHashMap<Class<?>, EventRouting>();
-  private final AtomicBoolean drain = new AtomicBoolean();
-  private final ThreadLocal<Session> threadLocalSession = new ThreadLocal<Session>() {
-    @Override
-    protected Session initialValue() {
-      return sessions.get();
-    }
-  };
-  private final SynchronousQueue<Action> todo = new SynchronousQueue<Action>();
+  private final ConcurrentMap<Class<?>, EventRouting> routeMap =
+      new ConcurrentHashMap<Class<?>, EventRouting>();
   private Queue returnPath;
   private boolean retryOnce = true;
+  private final Map<SessionName, Session> sessionsByName = new
+      EnumMap<SessionName, Session>(SessionName.class);
+  private final AtomicReference<State> state = new AtomicReference<State>(State.NASCENT);
+  private final ExecutorService svc = Executors.newSingleThreadExecutor();
 
-  MessageBridge() {
-    setDaemon(true);
-    setName("SEA MessageThread");
-  }
+  /**
+   * Requires injection.
+   */
+  MessageBridge() {}
 
   /**
    * Stop dequeing new messages, but continue to accept returning messages or sending new ones.
    */
   public void drain() throws Exception {
-    if (drain.compareAndSet(false, true)) {
-      execute(new Drain());
+    if (state.compareAndSet(State.STARTED, State.DRAINING)) {
+      execute(new Drain(), true);
     }
   }
 
@@ -280,19 +314,21 @@ public class MessageBridge extends Thread implements MessageListener {
     }
 
     /*
-     * Pass a thread-local session to the EventTransport, since we don't want to give it access to
-     * the main session used by the run-loop. The only reason the Session is being passed is to
-     * provide a factory for Message objects. Keeping the session open provides a noticeable
-     * performance boost, and there shouldn't be too many active sending threads. If this proves to
-     * be a problem, it would be possible to pass in a Session-facade that only allows Message
-     * creation, using an Action to actually produce the result.
+     * We want to encode the Event on the sending thread since the event could reference some kind
+     * of thread-local state (e.g. an EntityManager).
      */
-    Message message = transport.encode(threadLocalSession.get(), event, context);
+    Message message;
+    Session session = sessions.get();
+    try {
+      message = transport.encode(session, event, context);
+    } finally {
+      session.close();
+    }
     if (message == null) {
       return;
     }
 
-    execute(new EventSend(event, message));
+    execute(new EventSend(event, message), false);
   }
 
   /**
@@ -319,42 +355,37 @@ public class MessageBridge extends Thread implements MessageListener {
     }
   }
 
-  @Override
-  public void run() {
-    Session session = threadLocalSession.get();
-    try {
-      producer = session.createProducer(null);
-      returnPath = session.createTemporaryQueue();
-      session.createConsumer(returnPath).setMessageListener(this);
-    } catch (JMSException e) {
-      logger.error("Could not obtain JMS resources", e);
-      return;
-    }
-
-    try {
-      while (true) {
-        try {
-          Action action = todo.take();
-          logger.trace("Processing {}", action);
-          action.process(session);
-          done.put(NO_EXCEPTION);
-        } catch (Exception e) {
-          try {
-            done.put(e);
-          } catch (InterruptedException ignored) {}
-        }
-      }
-    } finally {
-      logger.error(getClass().getSimpleName() + " is exiting");
-    }
-  }
-
   public void setApplicationName(String applicationName) {
     this.applicationName = applicationName;
   }
 
   public void setRetryOnce(boolean retryOnce) {
     this.retryOnce = retryOnce;
+  }
+
+  /**
+   * Prepares the MessageBridge for routing messages. This method may be called more than once.
+   */
+  public void start() throws JMSException {
+    if (!state.compareAndSet(State.NASCENT, State.STARTING)) {
+      return;
+    }
+
+    // Allocate separate sessions for sending and receiving
+    Session tx = sessions.get();
+    Session rx = sessions.get();
+
+    sessionsByName.put(SessionName.RECEIVE, rx);
+    sessionsByName.put(SessionName.SEND, tx);
+
+    // Make sure a return path is available
+    returnPath = rx.createTemporaryQueue();
+    rx.createConsumer(returnPath).setMessageListener(this);
+
+    // Prepare to send messages. The destination is on a per-event basis, so no default is given.
+    producer = tx.createProducer(null);
+
+    state.set(State.STARTED);
   }
 
   public void subscribe(Class<? extends Event> eventType, SubscriptionOptions options)
@@ -364,22 +395,38 @@ public class MessageBridge extends Thread implements MessageListener {
         + " cannot be transported");
     }
 
-    execute(new EventRouting(eventType, options));
+    execute(new EventRouting(eventType, options), true);
   }
 
-  private void execute(Action action) throws Exception {
+  private void execute(Action action, boolean sync) {
     /*
      * Depending on how well the JMS client library handles broker failovers, it may be worthwhile
      * to retry failed actions.
      */
-    if (retryOnce) {
-      action = new RetryOnce(action);
+    final Action toProcess = retryOnce ? new RetryOnce(action) : action;
+
+    Future<?> future = svc.submit(new Callable<Void>() {
+      @Override
+      public Void call() {
+        try {
+          toProcess.process(sessionsByName.get(toProcess.getSessionName()));
+        } catch (JMSException e) {
+          logger.error("Unexpected JMS exception", e);
+        }
+        return null;
+      }
+    });
+
+    if (!sync) {
+      return;
     }
 
-    todo.put(action);
-    Exception ex = done.take();
-    if (!NO_EXCEPTION.equals(ex)) {
-      throw ex;
+    try {
+      future.get();
+    } catch (InterruptedException e) {
+      // OK, just let it go
+    } catch (ExecutionException e) {
+      logger.error("Unable to process action", e.getCause());
     }
   }
 }
