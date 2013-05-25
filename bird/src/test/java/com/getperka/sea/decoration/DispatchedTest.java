@@ -1,4 +1,4 @@
-package com.getperka.sea;
+package com.getperka.sea.decoration;
 
 /*
  * #%L
@@ -35,8 +35,10 @@ import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
 
-import com.getperka.sea.decoration.Dispatched;
-import com.getperka.sea.decoration.Logged;
+import com.getperka.sea.Event;
+import com.getperka.sea.EventDispatch;
+import com.getperka.sea.EventDispatchers;
+import com.getperka.sea.Receiver;
 import com.getperka.sea.decoration.Logged.Level;
 import com.getperka.sea.ext.DispatchCompleteEvent;
 import com.getperka.sea.ext.DispatchResult;

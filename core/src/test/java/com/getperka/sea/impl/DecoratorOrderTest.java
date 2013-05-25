@@ -27,6 +27,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -34,53 +35,74 @@ import org.junit.Test;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.EventDispatchers;
-import com.getperka.sea.decoration.Failure;
-import com.getperka.sea.decoration.Logged;
-import com.getperka.sea.decoration.Success;
-import com.getperka.sea.decoration.Timed;
 import com.getperka.sea.ext.DecoratorOrder;
+import com.getperka.sea.ext.EventDecorator;
+import com.getperka.sea.ext.EventDecoratorBinding;
 import com.getperka.sea.ext.EventObserver;
 import com.getperka.sea.ext.EventObserverBinding;
 import com.getperka.sea.impl.DecoratorMap.DecoratorInfo;
 
 public class DecoratorOrderTest {
 
-  @Logged
-  @Timed(value = 1)
+  @DecoratorB
+  @DecoratorA
   @ObserverA
   @ObserverB
-  @DecoratorOrder({ Logged.class, Timed.class, ObserverA.class, ObserverB.class })
+  @DecoratorOrder({ DecoratorB.class, DecoratorA.class, ObserverA.class, ObserverB.class })
   interface A {}
 
-  @Logged
-  @Timed(value = 1)
+  @DecoratorB
+  @DecoratorA
   @ObserverA
   @ObserverB
-  @DecoratorOrder({ Timed.class, Logged.class, ObserverB.class, ObserverA.class })
+  @DecoratorOrder({ DecoratorA.class, DecoratorB.class, ObserverB.class, ObserverA.class })
   interface B {}
 
-  @Logged
-  @Timed(value = 1)
+  @DecoratorB
+  @DecoratorA
   @ObserverA
   @ObserverB
-  @DecoratorOrder({ Logged.class, ObserverA.class })
+  @DecoratorOrder({ DecoratorB.class, ObserverA.class })
   interface C {}
 
-  @Logged
-  @Timed(value = 1)
+  @DecoratorB
+  @DecoratorA
   @ObserverA
   @ObserverB
-  @DecoratorOrder({ Timed.class, ObserverB.class })
+  @DecoratorOrder({ DecoratorA.class, ObserverB.class })
   interface D {}
+
+  @EventDecoratorBinding(MyDecorator.class)
+  @Retention(RetentionPolicy.RUNTIME)
+  @interface DecoratorA {}
+
+  @EventDecoratorBinding(MyDecorator.class)
+  @Retention(RetentionPolicy.RUNTIME)
+  @interface DecoratorB {}
+
+  @EventDecoratorBinding(MyDecorator.class)
+  @Retention(RetentionPolicy.RUNTIME)
+  @interface DecoratorC {}
+
+  @EventDecoratorBinding(MyDecorator.class)
+  @Retention(RetentionPolicy.RUNTIME)
+  @interface DecoratorD {}
 
   /**
    * Test one "extra" and an unused decorator.
    */
-  @Logged
-  @Timed(value = 1)
-  @Success
-  @DecoratorOrder({ Timed.class, Logged.class, Failure.class })
+  @DecoratorB
+  @DecoratorA
+  @DecoratorD
+  @DecoratorOrder({ DecoratorA.class, DecoratorB.class, DecoratorC.class })
   interface E {}
+
+  static class MyDecorator implements EventDecorator<Annotation, Event> {
+    @Override
+    public Callable<Object> wrap(com.getperka.sea.ext.EventDecorator.Context<Annotation, Event> ctx) {
+      return ctx.getWork();
+    }
+  }
 
   static class MyObserver implements EventObserver<Annotation, Event> {
     @Override
@@ -116,31 +138,31 @@ public class DecoratorOrderTest {
 
   @Test
   public void testA() throws NoSuchMethodException {
-    checkDecorators(A.class, Logged.class, Timed.class);
+    checkDecorators(A.class, DecoratorB.class, DecoratorA.class);
     checkObservers(A.class, ObserverA.class, ObserverB.class);
   }
 
   @Test
   public void testB() throws NoSuchMethodException {
-    checkDecorators(B.class, Timed.class, Logged.class);
+    checkDecorators(B.class, DecoratorA.class, DecoratorB.class);
     checkObservers(B.class, ObserverB.class, ObserverA.class);
   }
 
   @Test
   public void testC() throws NoSuchMethodException {
-    checkDecorators(C.class, Logged.class, Timed.class);
+    checkDecorators(C.class, DecoratorB.class, DecoratorA.class);
     checkObservers(C.class, ObserverA.class, ObserverB.class);
   }
 
   @Test
   public void testD() throws NoSuchMethodException {
-    checkDecorators(D.class, Timed.class, Logged.class);
+    checkDecorators(D.class, DecoratorA.class, DecoratorB.class);
     checkObservers(D.class, ObserverB.class, ObserverA.class);
   }
 
   @Test
   public void testE() throws NoSuchMethodException {
-    checkDecorators(E.class, Timed.class, Logged.class, Success.class);
+    checkDecorators(E.class, DecoratorA.class, DecoratorB.class, DecoratorD.class);
   }
 
   void dummy() {}

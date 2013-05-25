@@ -1,4 +1,4 @@
-package com.getperka.sea.decoration;
+package com.getperka.sea;
 
 /*
  * #%L

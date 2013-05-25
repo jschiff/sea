@@ -32,8 +32,8 @@ import java.util.concurrent.SynchronousQueue;
 
 import org.junit.Test;
 
+import com.getperka.sea.RepeatedDecoratorTest.Logged;
 import com.getperka.sea.RepeatedDecoratorTest.Repeated;
-import com.getperka.sea.decoration.Logged;
 import com.getperka.sea.ext.DecoratorOrder;
 import com.getperka.sea.ext.EventDecorator;
 import com.getperka.sea.ext.EventDecoratorBinding;
@@ -48,6 +48,10 @@ import com.getperka.sea.impl.HasInjector;
 @Repeated(value = "outer")
 @DecoratorOrder({ Logged.class, Repeated.class })
 public class RepeatedDecoratorTest {
+
+  @EventDecoratorBinding(RepeatedDecorator.class)
+  @Retention(RetentionPolicy.RUNTIME)
+  @interface Logged {}
 
   static class MyEvent implements Event {
     String value;
