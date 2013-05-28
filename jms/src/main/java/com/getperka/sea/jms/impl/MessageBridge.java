@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.inject.Singleton;
+import javax.jms.BytesMessage;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
@@ -48,9 +49,10 @@ import org.slf4j.Logger;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.ext.EventContext;
+import com.getperka.sea.ext.EventTransport;
+import com.getperka.sea.ext.EventTransportException;
 import com.getperka.sea.inject.EventLogger;
-import com.getperka.sea.jms.EventTransport;
-import com.getperka.sea.jms.EventTransportException;
+import com.getperka.sea.jms.MessageEvent;
 import com.getperka.sea.jms.SubscriptionMode;
 import com.getperka.sea.jms.SubscriptionOptions;
 import com.getperka.sea.jms.inject.EventSession;
@@ -171,10 +173,18 @@ public class MessageBridge implements MessageListener {
   }
 
   class EventSend implements Action {
+    final byte[] bytes;
     final Event event;
     final Message message;
 
+    public EventSend(Event event, byte[] bytes) {
+      this.bytes = bytes;
+      this.event = event;
+      this.message = null;
+    }
+
     public EventSend(Event event, Message message) {
+      this.bytes = null;
       this.event = event;
       this.message = message;
     }
@@ -200,8 +210,16 @@ public class MessageBridge implements MessageListener {
         return;
       }
 
-      message.setJMSType(transport.getTypeName(event.getClass()));
-      message.setJMSReplyTo(returnPath);
+      Message toSend;
+      if (bytes != null) {
+        BytesMessage bytesMessage = session.createBytesMessage();
+        bytesMessage.writeBytes(bytes);
+        toSend = bytesMessage;
+      } else {
+        toSend = message;
+      }
+      toSend.setJMSType(transport.getTypeName(event.getClass()));
+      toSend.setJMSReplyTo(returnPath);
 
       producer.send(destination, message);
     }
@@ -255,6 +273,8 @@ public class MessageBridge implements MessageListener {
 
   @Inject
   EventDispatch dispatch;
+  @Inject
+  EventCoder eventCoder;
   @Inject
   EventMetadataMap eventMetadata;
   @EventLogger
@@ -317,18 +337,15 @@ public class MessageBridge implements MessageListener {
      * We want to encode the Event on the sending thread since the event could reference some kind
      * of thread-local state (e.g. an EntityManager).
      */
-    Message message;
     Session session = sessions.get();
     try {
-      message = transport.encode(session, event, context);
+      Message message = eventCoder.encode(session, event, context);
+      if (message != null) {
+        execute(new EventSend(event, message), false);
+      }
     } finally {
       session.close();
     }
-    if (message == null) {
-      return;
-    }
-
-    execute(new EventSend(event, message), false);
   }
 
   /**
@@ -338,7 +355,7 @@ public class MessageBridge implements MessageListener {
   @Override
   public void onMessage(Message message) {
     try {
-      Event event = transport.decode(message);
+      Event event = eventCoder.decode(message);
       EventMetadata meta = eventMetadata.get(event);
       try {
         if (message.getJMSReplyTo() != null) {
@@ -351,7 +368,7 @@ public class MessageBridge implements MessageListener {
       // Pass this as the dispatch context to detect send-loops in maybeSendToJms
       dispatch.fire(event, this);
     } catch (EventTransportException e) {
-      logger.error("Unable to dispatch incoming JMS message", e);
+      logger.error("Unable to decode incoming JMS message", e);
     }
   }
 
@@ -390,12 +407,13 @@ public class MessageBridge implements MessageListener {
 
   public void subscribe(Class<? extends Event> eventType, SubscriptionOptions options)
       throws Exception {
-    if (!transport.canTransport(eventType)) {
-      throw new UnsupportedOperationException("The event type " + eventType.getCanonicalName()
-        + " cannot be transported");
+    if (transport.canTransport(eventType) || MessageEvent.class.isAssignableFrom(eventType)) {
+      execute(new EventRouting(eventType, options), true);
+      return;
     }
+    throw new UnsupportedOperationException("The event type " + eventType.getCanonicalName()
+      + " cannot be transported");
 
-    execute(new EventRouting(eventType, options), true);
   }
 
   private void execute(Action action, boolean sync) {

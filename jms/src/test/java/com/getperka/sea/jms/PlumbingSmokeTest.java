@@ -24,13 +24,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
+import javax.jms.BytesMessage;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
-import javax.jms.ObjectMessage;
 import javax.jms.Queue;
 import javax.jms.Topic;
 
@@ -71,7 +75,7 @@ public class PlumbingSmokeTest extends JmsTestBase {
   }
 
   @Test(timeout = TEST_TIMEOUT)
-  public void testQueueEventReceive() throws JMSException, EventSubscriberException,
+  public void testQueueEventReceive() throws IOException, JMSException, EventSubscriberException,
       InterruptedException {
     Queue temp = testSession.createTemporaryQueue();
     Queue queue = testSession.createQueue("test");
@@ -81,7 +85,7 @@ public class PlumbingSmokeTest extends JmsTestBase {
         MyQueueEvent.class, 1);
 
     MyQueueEvent event = new MyQueueEvent();
-    ObjectMessage message = testSession.createObjectMessage(event);
+    BytesMessage message = createBytesMessage(event);
     message.setJMSReplyTo(temp);
     message.setJMSType(event.getClass().getName());
 
@@ -98,7 +102,7 @@ public class PlumbingSmokeTest extends JmsTestBase {
     // Now re-fire the event and make sure it's in the queue
     eventDispatch.fire(received);
     MessageConsumer consumer = testSession.createConsumer(temp);
-    assertNotNull(((ObjectMessage) consumer.receive()).getObject());
+    assertTrue(((BytesMessage) consumer.receive()).getBodyLength() > 0);
     assertNull(consumer.receiveNoWait());
     consumer.close();
   }
@@ -110,12 +114,12 @@ public class PlumbingSmokeTest extends JmsTestBase {
 
     eventDispatch.fire(new MyQueueEventSendOnly());
     Message m = consumer.receive();
-    assertEquals(MyQueueEventSendOnly.class, ((ObjectMessage) m).getObject().getClass());
+    assertEquals(MyQueueEventSendOnly.class.getName(), m.getJMSType());
     consumer.close();
   }
 
   @Test(timeout = TEST_TIMEOUT)
-  public void testTopicEventReceive() throws JMSException, EventSubscriberException,
+  public void testTopicEventReceive() throws IOException, JMSException, EventSubscriberException,
       InterruptedException {
     Topic queue = testSession.createTopic("test");
 
@@ -123,7 +127,7 @@ public class PlumbingSmokeTest extends JmsTestBase {
         MyTopicEvent.class, 1);
 
     MyTopicEvent event = new MyTopicEvent();
-    ObjectMessage message = testSession.createObjectMessage(event);
+    BytesMessage message = createBytesMessage(event);
     message.setJMSType(event.getClass().getName());
     testSession.createProducer(queue).send(message);
 
@@ -144,12 +148,24 @@ public class PlumbingSmokeTest extends JmsTestBase {
     MessageConsumer consumer = testSession.createConsumer(topic);
     eventDispatch.fire(new MyTopicEvent());
     Message m = consumer.receive();
-    assertEquals(MyTopicEvent.class, ((ObjectMessage) m).getObject().getClass());
+    assertEquals(MyTopicEvent.class.getName(), m.getJMSType());
   }
 
   private void assertEmpty(Queue queue) throws JMSException {
     MessageConsumer consumer = testSession.createConsumer(queue);
     assertNull(consumer.receiveNoWait());
     consumer.close();
+  }
+
+  private BytesMessage createBytesMessage(Serializable event)
+      throws IOException, JMSException {
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    ObjectOutputStream data = new ObjectOutputStream(output);
+    data.writeObject(event);
+    data.close();
+
+    BytesMessage message = testSession.createBytesMessage();
+    message.writeBytes(output.toByteArray());
+    return message;
   }
 }

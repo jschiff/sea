@@ -1,4 +1,4 @@
-package com.getperka.sea.jms;
+package com.getperka.sea.ext;
 /*
  * #%L
  * Simple Event Architecture - JMS Support

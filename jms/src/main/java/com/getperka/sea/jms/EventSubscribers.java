@@ -24,6 +24,7 @@ import javax.jms.ConnectionFactory;
 
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.EventDispatchers;
+import com.getperka.sea.ext.EventTransport;
 import com.getperka.sea.jms.inject.EventConnectionFactory;
 import com.getperka.sea.jms.inject.JmsEventModule;
 import com.google.inject.Module;

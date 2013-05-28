@@ -1,4 +1,4 @@
-package com.getperka.sea.jms;
+package com.getperka.sea.ext;
 
 /*
  * #%L
@@ -20,22 +20,19 @@ package com.getperka.sea.jms;
  * #L%
  */
 
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.Serializable;
 
-import javax.jms.Message;
-import javax.jms.Session;
-
 import com.getperka.sea.Event;
-import com.getperka.sea.ext.EventContext;
-import com.getperka.sea.jms.impl.EventTransportImpl;
+import com.getperka.sea.impl.SerializableEventTransport;
 import com.google.inject.ImplementedBy;
 
 /**
- * Defines how {@link Event} instances should be transformed to and from {@link Message} instances.
- * The default implementation of EventTransport support types that implements {@link Serializable}
- * or {@link MessageEvent}.
+ * Defines how {@link Event} instances can be written and read from streams. The default
+ * implementation of EventTransport support types that implements {@link Serializable}.
  */
-@ImplementedBy(EventTransportImpl.class)
+@ImplementedBy(SerializableEventTransport.class)
 public interface EventTransport {
   /**
    * Return {@code true} if the given event can can be transported by the implementation.
@@ -43,15 +40,17 @@ public interface EventTransport {
   boolean canTransport(Class<? extends Event> eventType);
 
   /**
-   * Construct an {@link Event} instance from a JMS {@link Message}.
+   * Construct an {@link Event} instance from a stream.
    */
-  Event decode(Message message) throws EventTransportException;
+  Event decode(InputStream input) throws EventTransportException;
 
   /**
-   * Construct a JMS {@link Message} from an {@link Event} instance. An implementation may choose to
-   * return {@code null}, in which case the event will not be sent.
+   * Write an {@link Event} into an {@link OutputStream}.
+   * 
+   * @return {@code false} if the event should not be sent
    */
-  Message encode(Session session, Event event, EventContext context) throws EventTransportException;
+  boolean encode(Event event, EventContext context, OutputStream output)
+      throws EventTransportException;
 
   /**
    * Return a string uniquely identifying the type. The value returned from this method need not be

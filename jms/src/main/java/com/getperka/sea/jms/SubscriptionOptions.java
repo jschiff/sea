@@ -26,6 +26,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.getperka.sea.ext.EventTransport;
 import com.getperka.sea.jms.ext.SubscriptionOptionsBuilder;
 
 /**
