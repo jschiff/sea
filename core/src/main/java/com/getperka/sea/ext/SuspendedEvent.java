@@ -1,5 +1,7 @@
 package com.getperka.sea.ext;
 
+import com.getperka.sea.util.EventWaker;
+
 /*
  * #%L
  * Simple Event Architecture - Core
@@ -20,16 +22,19 @@ package com.getperka.sea.ext;
  * #L%
  */
 
-
 /**
  * A handle to an event whose processing was suspended by its receiver method. Calling
  * {@link #resume()} will invoke the specific receiver method that suspended the event.
+ * 
+ * @see EventWaker
  */
 public interface SuspendedEvent {
   /**
    * Resume the receiver method that suspended the event. This method may be called only once on a
    * specific instance of {@code SuspendedEvent}. If the event is re-suspended, the newly returned
    * {@code SuspendedEvent} must be used to re-resume the event.
+   * 
+   * @throws IllegalStateException if {@code resume} is called more than once.
    */
   void resume();
 }
