@@ -25,6 +25,7 @@ import java.lang.reflect.Method;
 
 import javax.inject.Provider;
 
+import com.getperka.sea.ext.ConfigurationProvider;
 import com.getperka.sea.ext.DecoratorOrder;
 import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.EventDecorator;
@@ -35,7 +36,7 @@ import com.getperka.sea.ext.EventObserver;
  * 
  * @see EventDispatchers#create()
  */
-public interface EventDispatch {
+public interface EventDispatch extends ConfigurationProvider {
   /**
    * Apply {@link EventDecorator} or {@link EventObserver} binding annotations on a {@link Class},
    * {@link Method}, or {@link Package} to all event dispatches.

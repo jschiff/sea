@@ -26,6 +26,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -39,6 +40,8 @@ import com.getperka.sea.BadReceiverException;
 import com.getperka.sea.BaseCompositeEvent;
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
+import com.getperka.sea.ext.ConfigurationProvider;
+import com.getperka.sea.ext.ConfigurationVisitor;
 import com.getperka.sea.ext.DispatchResult;
 import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.EventDecorator;
@@ -58,7 +61,7 @@ import com.google.inject.TypeLiteral;
  * {@link EventDecorator} configuration is memoized in instances of this class to reduce reflection
  * costs.
  */
-public class ReceiverTargetImpl implements ReceiverTarget {
+public class ReceiverTargetImpl implements ConfigurationProvider, ReceiverTarget {
   /**
    * Vends instances of {@link EventDecorator.Context}.
    */
@@ -113,6 +116,16 @@ public class ReceiverTargetImpl implements ReceiverTarget {
   private Provider<ReceiverMethodInvocation> works;
 
   protected ReceiverTargetImpl() {}
+
+  @Override
+  public void accept(ConfigurationVisitor visitor) {
+    List<Annotation> list = new ArrayList<Annotation>();
+    for (DecoratorInfo info : decoratorMap.getDecoratorInfo(method)) {
+      list.add(info.getAnnotation());
+    }
+    Collections.reverse(list);
+    visitor.receiverMethod(method, eventType, list);
+  }
 
   public DispatchResult dispatch(Event event, EventContext context) {
     if (event == null || context == null) {
