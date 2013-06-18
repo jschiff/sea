@@ -1,5 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <artifactId>sea-bird</artifactId>
   <name>Simple Event Architecture - Bits of Independently Reusable Decoration</name>
@@ -7,13 +6,13 @@
     <url>https://github.com/perka/sea</url>
     <connection>scm:git:git@github.com:perka/sea.git</connection>
     <developerConnection>scm:git:git@github.com:perka/sea.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>sea-0.1.7</tag>
   </scm>
 
   <parent>
     <groupId>com.getperka.sea</groupId>
     <artifactId>sea-parent</artifactId>
-    <version>0.1.7-SNAPSHOT</version>
+    <version>0.1.7</version>
   </parent>
 
   <dependencies>
