@@ -70,6 +70,7 @@ public class DispatchImpl implements EventDispatch, HasInjector {
     bindingMap.accept(visitor);
     dispatchMap.accept(visitor);
     observers.accept(visitor);
+    visitor.endConfiguration();
   }
 
   @Override
