@@ -143,6 +143,7 @@ public class SubscriptionObserver implements EventObserver<Subscriptions, Event>
   @Override
   public void shutdown() {
     try {
+      messageThread.stop();
       connection.close();
     } catch (JMSException e) {
       logger.error("Could not close Connection", e);

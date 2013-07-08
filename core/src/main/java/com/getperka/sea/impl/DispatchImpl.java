@@ -34,6 +34,8 @@ import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.Registration;
 import com.getperka.sea.ext.ConfigurationVisitor;
+import com.getperka.sea.ext.DispatchCompleteEvent;
+import com.getperka.sea.ext.DrainEvent;
 import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.SuspendedEvent;
 import com.getperka.sea.inject.EventExecutor;
@@ -109,6 +111,10 @@ public class DispatchImpl implements EventDispatch, HasInjector {
       }
     };
     if (!observers.shouldFire(event, context)) {
+      DispatchCompleteEvent evt = new DispatchCompleteEvent();
+      evt.setContext(context);
+      evt.setSource(event);
+      fire(evt);
       return;
     }
     List<ReceiverStackInvocation> allInvocation = invocationManager.getInvocations(event, context);
@@ -125,6 +131,11 @@ public class DispatchImpl implements EventDispatch, HasInjector {
   @Override
   public Injector getInjector() {
     return injector;
+  }
+
+  @Override
+  public boolean isDraining() {
+    return invocationManager.isDraining();
   }
 
   @Override
@@ -149,6 +160,9 @@ public class DispatchImpl implements EventDispatch, HasInjector {
 
   @Override
   public void setDraining(boolean drain) {
+    if (drain) {
+      fire(new DrainEvent());
+    }
     invocationManager.setDraining(drain);
   }
 

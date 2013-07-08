@@ -114,6 +114,10 @@ public class InvocationManager {
     return pendingInvocations.get();
   }
 
+  public boolean isDraining() {
+    return isDraining.get();
+  }
+
   public void setDraining(boolean drain) {
     pendingLock.lock();
     try {

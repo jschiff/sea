@@ -35,6 +35,7 @@ import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
 import com.getperka.sea.Receiver;
 import com.getperka.sea.Registration;
+import com.getperka.sea.ext.DrainEvent;
 
 /**
  * A latch that waits for a specific number of Events. In addition to simply counting down,
@@ -127,10 +128,9 @@ public abstract class EventLatch<T extends Event> {
   public void await(long duration, TimeUnit unit) throws InterruptedException {
     countingLock.lock();
     try {
-      if (!isCollecting()) {
-        return;
+      if (isCollecting()) {
+        finishedCollection.await(duration, unit);
       }
-      finishedCollection.await(duration, unit);
     } finally {
       countingLock.unlock();
     }
@@ -199,6 +199,9 @@ public abstract class EventLatch<T extends Event> {
    * @param count the number of events to collect
    */
   public void reset(int count) {
+    if (dispatch.isDraining()) {
+      count = 0;
+    }
     countingLock.lock();
     try {
       int previousCount = this.count.getAndSet(count);
@@ -245,6 +248,11 @@ public abstract class EventLatch<T extends Event> {
    */
   protected EventDispatch getEventDispatch() {
     return dispatch;
+  }
+
+  @Receiver(synchronous = true)
+  void drain(DrainEvent evt) {
+    reset(0);
   }
 
   boolean isCollecting() {

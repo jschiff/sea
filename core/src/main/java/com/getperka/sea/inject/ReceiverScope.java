@@ -21,7 +21,9 @@ package com.getperka.sea.inject;
  */
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -72,6 +74,18 @@ public class ReceiverScope extends BaseScope {
 
   public void exit() {
     frameStack.get().pop();
+  }
+
+  /**
+   * Returns the list of currently-executing Events. This list will have more than one element if a
+   * synchronous receiver is being executed.
+   */
+  public List<Event> getEventStack() {
+    List<Event> toReturn = new ArrayList<Event>();
+    for (Frame frame : frameStack.get()) {
+      toReturn.add((Event) frame.values.get(currentEventKey));
+    }
+    return toReturn;
   }
 
   public boolean inReceiver() {

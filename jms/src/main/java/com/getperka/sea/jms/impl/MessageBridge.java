@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.inject.Inject;
@@ -48,6 +49,9 @@ import org.slf4j.Logger;
 
 import com.getperka.sea.Event;
 import com.getperka.sea.EventDispatch;
+import com.getperka.sea.Receiver;
+import com.getperka.sea.ext.DispatchCompleteEvent;
+import com.getperka.sea.ext.DrainEvent;
 import com.getperka.sea.ext.EventContext;
 import com.getperka.sea.ext.EventTransport;
 import com.getperka.sea.ext.EventTransportException;
@@ -107,10 +111,13 @@ public class MessageBridge implements MessageListener {
     final Class<? extends Event> eventType;
     boolean honorReplyTo;
     final SubscriptionOptions options;
+    final Semaphore semaphore;
 
     public EventRouting(Class<? extends Event> eventType, SubscriptionOptions options) {
       this.eventType = eventType;
       this.options = options;
+      this.semaphore =
+          options.concurrencyLevel() <= 0 ? null : new Semaphore(options.concurrencyLevel());
     }
 
     @Override
@@ -162,7 +169,13 @@ public class MessageBridge implements MessageListener {
         }
 
         consumer = session.createConsumer(dest, selector, false);
-        consumer.setMessageListener(MessageBridge.this);
+        if (semaphore == null) {
+          consumer.setMessageListener(MessageBridge.this);
+        } else {
+          String name = eventType.getSimpleName();
+          new Thread(new ThrottledReceiver(name, consumer, semaphore),
+              "ThrottledReceiver-" + name).start();
+        }
       }
     }
 
@@ -221,7 +234,8 @@ public class MessageBridge implements MessageListener {
       toSend.setJMSType(transport.getTypeName(event.getClass()));
       toSend.setJMSReplyTo(returnPath);
 
-      producer.send(destination, message);
+      producer.send(destination, toSend, Message.DEFAULT_DELIVERY_MODE, Message.DEFAULT_PRIORITY,
+          routing.options.messageTtlUnit().toMillis(routing.options.messageTtl()));
     }
 
     @Override
@@ -268,7 +282,64 @@ public class MessageBridge implements MessageListener {
     NASCENT,
     STARTING,
     STARTED,
-    DRAINING;
+    DRAINING,
+    STOPPED;
+  }
+
+  /**
+   * Uses a {@link Semaphore} to restrict the rate at which {@link MessageConsumer#receive()} is
+   * called.
+   */
+  class ThrottledReceiver implements Runnable {
+    private final MessageConsumer consumer;
+    private final int defaultPermits;
+    private final String name;
+    private final Semaphore semaphore;
+
+    public ThrottledReceiver(String name, MessageConsumer consumer, Semaphore semaphore) {
+      this.consumer = consumer;
+      this.name = name;
+      this.semaphore = semaphore;
+      defaultPermits = semaphore.availablePermits();
+      dispatch.register(this);
+    }
+
+    @Override
+    public void run() {
+      while (State.STARTED.equals(state.get())) {
+        try {
+          // Try to acquire a permit, if this doesn't happen immediately, log it
+          if (!semaphore.tryAcquire()) {
+            logger.warn("Throttling {}", name);
+            // Now just wait until a permit is available
+            semaphore.acquireUninterruptibly();
+            logger.info("Resuming {}", name);
+          }
+          Message message = consumer.receive();
+          if (message == null) {
+            semaphore.release();
+          } else {
+            onMessage(message);
+          }
+        } catch (JMSException e) {
+          logger.error("Unhandled exception while receiving message", e);
+        } catch (RuntimeException e) {
+          logger.error("Unhandled exception while receiving message", e);
+        }
+      }
+    }
+
+    /**
+     * This is a hack for testing, where the {@link EventDispatch} may be repeatedly drained and
+     * reset, which will cause loss of any pending {@link DispatchCompleteEvent} events, preventing
+     * the receiver from operating.
+     */
+    @Receiver
+    void reset(DrainEvent evt) {
+      logger.debug("Resetting {}", name);
+      semaphore.drainPermits();
+      semaphore.release(defaultPermits);
+    }
   }
 
   @Inject
@@ -405,6 +476,10 @@ public class MessageBridge implements MessageListener {
     state.set(State.STARTED);
   }
 
+  public void stop() {
+    state.set(State.STOPPED);
+  }
+
   public void subscribe(Class<? extends Event> eventType, SubscriptionOptions options)
       throws Exception {
     if (transport.canTransport(eventType) || MessageEvent.class.isAssignableFrom(eventType)) {
@@ -414,6 +489,26 @@ public class MessageBridge implements MessageListener {
     throw new UnsupportedOperationException("The event type " + eventType.getCanonicalName()
       + " cannot be transported");
 
+  }
+
+  /**
+   * If an event type is throttled, credit its semaphore.
+   */
+  @Receiver
+  void dispatchComplete(DispatchCompleteEvent evt) {
+    // Ignore any events not kicked off from a JMS message
+    if (!this.equals(evt.getContext().getUserObject())) {
+      return;
+    }
+    EventRouting r = routeMap.get(evt.getSource().getClass());
+    if (r != null && r.semaphore != null) {
+      r.semaphore.release();
+    }
+  }
+
+  @Inject
+  void inject() {
+    dispatch.register(this);
   }
 
   private void execute(Action action, boolean sync) {

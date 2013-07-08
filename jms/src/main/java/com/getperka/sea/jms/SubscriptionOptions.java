@@ -25,6 +25,9 @@ import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.concurrent.TimeUnit;
+
+import javax.jms.Message;
 
 import com.getperka.sea.ext.EventTransport;
 import com.getperka.sea.jms.ext.SubscriptionOptionsBuilder;
@@ -47,6 +50,15 @@ public @interface SubscriptionOptions {
   SubscriptionOptions DEFAULT = new SubscriptionOptionsBuilder().build();
 
   /**
+   * The number of event messages that should be processed concurrently for the event type. This
+   * control is used to mitigate a "thundering herd" problem where a very large number of events of
+   * a particular type are generated in a short time frame.
+   * <p>
+   * The default value of {@code 0} will disable throttling.
+   */
+  int concurrencyLevel() default 0;
+
+  /**
    * Override the destination name for the event. If unspecified, the event will be sent to a queue
    * or topic whose name is {@link Subscriptions#applicationName()}.
    */
@@ -60,6 +72,20 @@ public @interface SubscriptionOptions {
    * @see Message
    */
   String messageSelector() default "";
+
+  /**
+   * The TTL for JMS messages sent by this subscription, measured in {@link #messageTtlUnit()}.
+   * <p>
+   * The default value {@code 0} means that messages do not have a TTL.
+   */
+  long messageTtl() default 0;
+
+  /**
+   * The unit of measurement for {@link #messageTtl()}.
+   * <p>
+   * The default value is {@link TimeUnit#SECONDS}.
+   */
+  TimeUnit messageTtlUnit() default TimeUnit.SECONDS;
 
   /**
    * Describes a pattern for how events should behave when sent over JMS.

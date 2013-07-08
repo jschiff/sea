@@ -86,42 +86,46 @@ public class RegistrationImpl implements ConfigurationProvider, Registration {
     Map<Class<? extends Event>, List<ReceiverTarget>> temp =
         new HashMap<Class<? extends Event>, List<ReceiverTarget>>();
 
-    for (Method m : receiver.getDeclaredMethods()) {
-      Receiver annotation = m.getAnnotation(Receiver.class);
-      // Ignore anything not explicitly annotated to receive events
-      if (annotation == null) {
-        continue;
-      }
-
-      // Create a ReceiverTarget to handle dispatch to the method
-      ReceiverTargetImpl target = dispatchTargets.get();
-      target.setSynchronous(annotation.synchronous());
-      if (Modifier.isStatic(m.getModifiers())) {
-        target.setStaticDispatch(m);
-      } else {
-        if (provider == null) {
-          provider = injector.getProvider(receiver);
+    Class<? super T> lookAt = receiver;
+    while (lookAt != null) {
+      for (Method m : lookAt.getDeclaredMethods()) {
+        Receiver annotation = m.getAnnotation(Receiver.class);
+        // Ignore anything not explicitly annotated to receive events
+        if (annotation == null) {
+          continue;
         }
-        target.setInstanceDispatch(provider, m);
-      }
 
-      Class<? extends Event> event = target.getEventType();
-      if (event == null) {
-        logger.warn("Ignoring {}.{} because it does not receive an Event type",
-            receiver.getName(), m.getName());
-        continue;
-      }
+        // Create a ReceiverTarget to handle dispatch to the method
+        ReceiverTargetImpl target = dispatchTargets.get();
+        target.setSynchronous(annotation.synchronous());
+        if (Modifier.isStatic(m.getModifiers())) {
+          target.setStaticDispatch(m);
+        } else {
+          if (provider == null) {
+            provider = injector.getProvider(receiver);
+          }
+          target.setInstanceDispatch(provider, m);
+        }
 
-      List<ReceiverTarget> list = temp.get(event);
-      if (list == null) {
-        list = new ArrayList<ReceiverTarget>();
-        temp.put(event, list);
-      }
+        Class<? extends Event> event = target.getEventType();
+        if (event == null) {
+          logger.warn("Ignoring {}.{} because it does not receive an Event type",
+              receiver.getName(), m.getName());
+          continue;
+        }
 
-      // Create a ReceiverTarget that will dispatch to the method
-      list.add(target);
-      logger.debug("{}.{} will receive {}",
-          new Object[] { receiver.getName(), m.getName(), event.getName() });
+        List<ReceiverTarget> list = temp.get(event);
+        if (list == null) {
+          list = new ArrayList<ReceiverTarget>();
+          temp.put(event, list);
+        }
+
+        // Create a ReceiverTarget that will dispatch to the method
+        list.add(target);
+        logger.debug("{}.{} will receive {}",
+            new Object[] { receiver.getName(), m.getName(), event.getName() });
+      }
+      lookAt = lookAt.getSuperclass();
     }
 
     // Make the datastructure immutable
