@@ -168,10 +168,14 @@ public class MessageBridge implements MessageListener {
           selector += " AND " + options.messageSelector();
         }
 
-        consumer = session.createConsumer(dest, selector, false);
         if (semaphore == null) {
+          // If unthrottled, use the common receive session
+          consumer = session.createConsumer(dest, selector, false);
           consumer.setMessageListener(MessageBridge.this);
         } else {
+          // Otherwise, allocate a new session for the receiver thread
+          session = sessions.get();
+          consumer = session.createConsumer(dest, selector, false);
           String name = eventType.getSimpleName();
           new Thread(new ThrottledReceiver(name, consumer, semaphore),
               "ThrottledReceiver-" + name).start();
@@ -310,10 +314,10 @@ public class MessageBridge implements MessageListener {
         try {
           // Try to acquire a permit, if this doesn't happen immediately, log it
           if (!semaphore.tryAcquire()) {
-            logger.warn("Throttling {}", name);
+            logger.debug("Throttling {}", name);
             // Now just wait until a permit is available
             semaphore.acquireUninterruptibly();
-            logger.info("Resuming {}", name);
+            logger.debug("Resuming {}", name);
           }
           Message message = consumer.receive();
           if (message == null) {
